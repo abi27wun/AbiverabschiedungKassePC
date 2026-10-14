@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abi-Kassensystem | Apple Style</title>
+
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --text-main: #1d1d1f;
+            --text-secondary: #86868b;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --success: #34c759;
+            --danger: #ff3b30;
+            --warning: #ff9500;
+            --purple: #af52de;
+            --border-radius: 14px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(30px);
+            padding: 40px;
+            border-radius: 22px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 340px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .login-box h2 {
+            margin-top: 0;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: #e3e3e8;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s;
+        }
+        .login-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .login-input:focus:not(:disabled) {
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.3);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 16px 24px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: #e3e3e8;
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            font-weight: 600;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #d1d1d6; transition: .3s; border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px;
+            background-color: white; transition: .3s; border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider.happy-hour-slider { background-color: var(--warning); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .view-section { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+        .view-section.active { display: flex; }
+
+        .main-container {
+            display: grid; grid-template-columns: 2fr 1fr; gap: 20px; flex: 1; overflow: hidden;
+        }
+
+        .section {
+            background: var(--card-bg); border-radius: var(--border-radius); padding: 20px;
+            box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .section-title {
+            font-size: 1.1rem; font-weight: 600; margin-top: 0; margin-bottom: 15px;
+            letter-spacing: -0.2px; border-bottom: 1px solid #f0f0f2; padding-bottom: 10px;
+        }
+
+        .multiplier-bar {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #f0f0f2;
+        }
+
+        .multiplier-btn {
+            background: #f0f0f2;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-main);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .multiplier-btn:hover { background: #e3e3e8; }
+        .multiplier-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        .pos-container { overflow-y: auto; flex: 1; padding-right: 5px; }
+
+        .category-group { margin-bottom: 20px; }
+        .category-title { font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+
+        .product-btn {
+            background: #fafafa; border: 1px solid #e5e5ea; border-radius: 12px; padding: 12px 10px;
+            text-align: center; cursor: pointer; transition: all 0.2s ease; display: flex;
+            flex-direction: column; justify-content: space-between; height: 90px; position: relative;
+        }
+
+        .product-btn:hover { border-color: var(--accent); background: #f0f6ff; transform: scale(1.02); }
+        .product-btn.low-stock { border-color: var(--danger); background: #fff5f5; }
+        .product-btn.sold-out { background: #e5e5ea; border-color: #d1d1d6; opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+        .product-name { font-weight: 600; font-size: 0.9rem; }
+        .product-price { color: var(--accent); font-weight: 600; font-size: 1rem; }
+        .product-price.discounted { color: var(--warning); }
+        .old-price { text-decoration: line-through; font-size: 0.75rem; color: var(--text-secondary); margin-right: 4px; }
+        .product-stock-tag { font-size: 0.7rem; color: var(--text-secondary); }
+
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; overflow-y: auto; max-height: 480px; padding: 12px; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 14px; margin-bottom: 15px; }
+        .admin-product-card { background: #ffffff; border: 1px solid #d1d1d6; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.04); }
+        .admin-delete-badge { position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(255,59,48,0.4); }
+        
+        .admin-sub-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f2; padding-bottom: 12px; flex-wrap: wrap; }
+        .admin-sub-btn { background: #e3e3e8; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: var(--text-main); transition: all 0.2s; }
+        .admin-sub-btn.active { background: var(--accent); color: white; }
+        
+        /* HIER IST DER FIX: overflow-y: auto anstelle von overflow: hidden */
+        .admin-sub-section { display: none; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 5px; }
+        .admin-sub-section.active { display: flex; }
+
+        .cart-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; border: 1px solid #e5e5ea; border-radius: 10px; background: #fafafa; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e5e5ea; font-size: 0.9rem; }
+        .cart-item button { background: var(--danger); color: white; border: none; border-radius: 6px; padding: 2px 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
+
+        .total-container { margin-top: 15px; font-size: 1.3rem; font-weight: 600; display: flex; justify-content: space-between; background: #f0f6ff; padding: 12px 16px; border-radius: 10px; color: var(--accent); }
+        
+        .change-calculator { display: none; margin-top: 12px; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 10px; padding: 12px; }
+        .change-calculator.active { display: block; }
+        .change-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
+        .cash-buttons { display: flex; gap: 5px; margin-bottom: 10px; }
+        .cash-btn { flex: 1; background: #e3e3e8; border: none; padding: 6px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; transition: background 0.2s; }
+        .change-result { font-weight: 600; color: var(--success); font-size: 1.05rem; text-align: right; }
+
+        .checkout-actions { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .checkout-row { display: flex; gap: 8px; }
+
+        .btn { padding: 10px 16px; border: none; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: white; transition: opacity 0.2s, transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--accent); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); color: #fff; }
+        .btn-info { background: var(--info, #0071e3); }
+        .btn-purple { background: var(--purple); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .table-container { overflow-y: auto; max-height: 350px; border: 1px solid #e5e5ea; border-radius: 12px; margin-bottom: 15px; background: #fafafa; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+        th, td { padding: 10px 14px; border-bottom: 1px solid #e5e5ea; }
+        th { background: #f0f0f2; font-weight: 600; position: sticky; top: 0; z-index: 10; color: var(--text-secondary); }
+
+        .badge-status-active { background: var(--success); color: white; padding: 4px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; }
+        .badge-status-inactive { background: var(--danger); color: white; padding: 4px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; }
+
+        .radio-group { display: flex; gap: 15px; margin-bottom: 10px; font-weight: 500; font-size: 0.9rem; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #fafafa; border: 1px solid #e5e5ea; border-radius: 12px; padding: 14px; }
+        .stat-card h4 { margin: 0 0 4px 0; color: var(--text-secondary); font-size: 0.8rem; font-weight: 500; }
+        .stat-card .value { font-size: 1.2rem; font-weight: 600; color: var(--accent); }
+
+        footer { margin-top: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>Abi-Bar Login</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Bitte Name, 4-stellige ID und Passwort eingeben.</p>
+            <input type="text" id="login-name" class="login-input" placeholder="Dein Name" style="text-align: center;">
+            <input type="password" id="login-id" class="login-input" placeholder="4-stellige ID" maxlength="4" style="text-align: center;">
+            <input type="password" id="login-pass" class="login-input" placeholder="Passwort" style="text-align: center;">
+            <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" onclick="performLogin()">Einloggen</button>
+        </div>
+    </div>
+
+    <header>
+        <div>
+            <h1>Angemeldet: <span id="current-waiter-display" style="color: var(--success); font-weight: 600;">--</span></h1>
+            <span id="current-datetime" style="font-size: 0.8rem; color: var(--text-secondary);">--.--.----, --:--:--</span>
+        </div>
+        <div class="header-controls">
+            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="performLogout()">Abmelden</button>
+            <div class="toggle-container" id="happy-hour-container" style="display: flex;">
+                <span style="color: var(--warning); font-weight: bold;">⚡ Happy Hour</span>
+                <label class="switch">
+                    <input type="checkbox" id="happy-hour-toggle" onchange="toggleGlobalHappyHour(this.checked)">
+                    <span class="slider happy-hour-slider"></span>
+                </label>
+            </div>
+            <div class="toggle-container">
+                <span>Rückgeld</span>
+                <label class="switch">
+                    <input type="checkbox" id="change-toggle" onchange="toggleChangeCalculator()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="nav-tabs">
+                <button class="tab-btn active" onclick="switchView('pos')">Kasse</button>
+                <button class="tab-btn" onclick="switchView('stock')">Lager & Log</button>
+                <button class="tab-btn" onclick="switchView('journal')">Kassenbuch</button>
+                <button class="tab-btn" id="admin-tab-btn" onclick="switchView('admin')" style="color: #991b1b; display: none;">🔒 Admin</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- KASSE -->
+    <div id="view-pos" class="view-section active">
+        <div class="main-container">
+            <div class="section">
+                <h2 class="section-title">Getränke & Produkte</h2>
+                <!-- Multiplikator Leiste x1 bis x20 -->
+                <div class="multiplier-bar" id="multiplier-bar">
+                    <button class="multiplier-btn active" onclick="setMultiplier(1, this)">x1</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(2, this)">x2</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(3, this)">x3</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(4, this)">x4</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(5, this)">x5</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(6, this)">x6</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(7, this)">x7</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(8, this)">x8</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(9, this)">x9</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(10, this)">x10</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(12, this)">x12</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(15, this)">x15</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(20, this)">x20</button>
+                </div>
+                <div class="pos-container" id="pos-container"></div>
+            </div>
+            <div class="section">
+                <h2 class="section-title">Aktuelle Bestellung</h2>
+                <ul class="cart-list" id="cart-list">
+                    <li style="text-align: center; color: var(--text-secondary); padding: 20px;">Warenkorb ist leer</li>
+                </ul>
+                <div class="total-container">
+                    <span>Gesamt:</span>
+                    <span id="total-price">0,00 €</span>
+                </div>
+                <div class="change-calculator" id="change-box">
+                    <div class="cash-buttons">
+                        <button class="cash-btn" onclick="addCash(5)">+ 5 €</button>
+                        <button class="cash-btn" onclick="addCash(10)">+ 10 €</button>
+                        <button class="cash-btn" onclick="addCash(20)">+ 20 €</button>
+                        <button class="cash-btn" onclick="addCash(50)">+ 50 €</button>
+                        <button class="cash-btn" onclick="setExactCash()">Passend</button>
+                    </div>
+                    <div class="change-row">
+                        <span>Gegeben:</span>
+                        <input type="number" id="cash-given-input" placeholder="0.00" oninput="calculateChange()" class="login-input" style="width:90px; text-align:right; margin:0;">
+                    </div>
+                    <div class="change-row" style="margin-top: 5px;">
+                        <span>Rückgeld:</span>
+                        <span class="change-result" id="change-amount">0,00 €</span>
+                    </div>
+                </div>
+                <div class="checkout-actions">
+                    <div class="checkout-row">
+                        <button class="btn btn-purple" id="btn-q13" onclick="toggleCartBadge('Q13')" style="flex: 1;" disabled>Q13 (Frei)</button>
+                        <button class="btn btn-info" id="btn-vip" onclick="toggleCartBadge('VIP')" style="flex: 1;" disabled>VIP (50%)</button>
+                    </div>
+                    <div class="checkout-row">
+                        <button class="btn btn-danger" onclick="clearCart()" style="flex: 1;">Löschen</button>
+                        <button class="btn btn-success" id="pay-btn" onclick="checkout()" style="flex: 2;" disabled>Kassieren</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LAGER -->
+    <div id="view-stock" class="view-section">
+        <div class="section" style="flex: 1; overflow-y: auto;">
+            <h2 class="section-title">Lagerbestand verwalten (Passwortgeschützt)</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Artikel</th>
+                            <th>Preis</th>
+                            <th>Lagerbestand</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-tbody"></tbody>
+                </table>
+            </div>
+            
+            <h2 class="section-title" style="margin-top: 20px;">Lager- & Storno-Logbuch</h2>
+            <div class="table-container" style="max-height: 200px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Datum & Uhrzeit</th>
+                            <th>Artikel / Aktion</th>
+                            <th>Bestand / Info</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-log-tbody">
+                        <tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Noch keine Einträge.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- KASSENBUCH -->
+    <div id="view-journal" class="view-section">
+        <div class="section" style="flex: 1; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 class="section-title" style="margin: 0; border: none;">Verkaufsstatistik & Kassenbuch</h2>
+                <button class="btn btn-warning" style="padding: 6px 12px; font-size: 0.8rem;" onclick="exportToCSV()">📥 Kassenbuch CSV exportieren</button>
+            </div>
+            <div class="stats-grid" id="stats-grid"></div>
+            <h2 class="section-title" style="margin-top: 20px;">Kassenbuch</h2>
+            <div class="table-container" style="max-height: 250px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Datum & Uhrzeit</th>
+                            <th>Kellner</th>
+                            <th>Bestellung</th>
+                            <th>Betrag</th>
+                            <th>Aktion</th>
+                        </tr>
+                    </thead>
+                    <tbody id="journal-tbody">
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Noch keine Verkäufe getätigt.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="view-admin" class="view-section">
+        <div class="section" style="flex: 1; overflow-y: auto;">
+            <h2 class="section-title">🔒 Master-Admin-Bereich</h2>
+            
+            <div class="admin-sub-tabs">
+                <button class="admin-sub-btn active" onclick="switchAdminTab('products')">📦 Produkte & Kategorien</button>
+                <button class="admin-sub-btn" onclick="switchAdminTab('happyhour')">⚡ Happy Hour Management</button>
+                <button class="admin-sub-btn" onclick="switchAdminTab('waiters')">👥 Kellner & Admin-Rechte</button>
+                <button class="admin-sub-btn" onclick="switchAdminTab('logs')">📋 System Logs</button>
+            </div>
+
+            <!-- REITER 1: Produkte -->
+            <div id="admin-tab-products" class="admin-sub-section active">
+                <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <input type="text" id="new-cat-name" class="login-input" placeholder="Neue Kategorie (z.B. Shots)" style="margin:0; flex:2;">
+                    <button class="btn btn-success" style="padding: 12px 20px;" onclick="addCategory()">Kategorie hinzufügen</button>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 1.05rem; margin: 0;">Produkte & Preise bearbeiten:</h3>
+                    <button class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="addNewProduct()">+ Produkt hinzufügen</button>
+                </div>
+                <div class="admin-grid" id="admin-products-grid"></div>
+            </div>
+
+            <!-- REITER 2: Happy Hour Management -->
+            <div id="admin-tab-happyhour" class="admin-sub-section">
+                
+                <!-- OBERE LEISTE: STATUS & EINSTELLUNG -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <h3 style="margin: 0; font-size: 1.1rem;">Live Status:</h3>
+                        <span id="hh-status-badge" class="badge-status-inactive">Inaktiv</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 0.85rem; font-weight: 500;">Schalter in der Kasse anzeigen:</span>
+                        <label class="switch">
+                            <input type="checkbox" id="show-hh-toggle" onchange="toggleShowHappyHourSetting()" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- UNTER-REITER: Manuell oder Zeitplan -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f2; padding-bottom: 12px;">
+                    <button class="admin-sub-btn admin-hh-tab-btn active" onclick="switchHHTab('manual')">Manuell Steuern</button>
+                    <button class="admin-sub-btn admin-hh-tab-btn" onclick="switchHHTab('schedule')">Zeitpläne verwalten</button>
+                </div>
+
+                <!-- BLOCK 1: MANUELLE HAPPY HOUR -->
+                <div id="hh-sec-manual" style="display: block;">
+                    <div style="background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; margin-bottom: 25px; box-shadow: var(--shadow);">
+                        <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--accent);">Manuelle Happy Hour Starten</h3>
+                        
+                        <div class="radio-group">
+                            <label><input type="radio" name="manual_hh_mode" value="global" onchange="updateManualUI()" checked> Allgemein (Gleicher Rabatt für alle gewählten Produkte)</label>
+                            <label><input type="radio" name="manual_hh_mode" value="individual" onchange="updateManualUI()"> Individuell (Rabatt pro Produkt einstellen)</label>
+                        </div>
+
+                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.9rem; font-weight: 600;">Eingabe für "Allgemein" (€):</span>
+                            <input type="number" id="manual-global-discount" class="login-input" value="1.00" step="0.5" min="0.1" style="width: 100px; margin: 0;">
+                        </div>
+
+                        <div class="table-container" style="max-height: 250px; margin-bottom: 15px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">Aktiv</th>
+                                        <th>Produkt</th>
+                                        <th>Normalpreis</th>
+                                        <th>Individueller Rabatt (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manual-hh-products"></tbody>
+                            </table>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-warning" onclick="startManualHH()">JETZT STARTEN</button>
+                            <button class="btn btn-danger" onclick="stopHH()">BEENDEN</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BLOCK 2: ZEITPLAN HAPPY HOUR -->
+                <div id="hh-sec-schedule" style="display: none;">
+                    <div style="background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; margin-bottom: 20px; box-shadow: var(--shadow);">
+                        <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--success);">Zeitplan hinzufügen</h3>
+                        
+                        <div style="display: flex; gap: 12px; margin-bottom: 15px;">
+                            <input type="text" id="sched-day" class="login-input" placeholder="Tag / Datum (z.B. Freitag)" style="margin: 0; flex: 2;">
+                            <input type="time" id="sched-start" class="login-input" style="margin: 0; flex: 1;">
+                            <input type="time" id="sched-end" class="login-input" style="margin: 0; flex: 1;">
+                        </div>
+
+                        <div class="radio-group">
+                            <label><input type="radio" name="sched_hh_mode" value="global" onchange="updateSchedUI()" checked> Allgemein</label>
+                            <label><input type="radio" name="sched_hh_mode" value="individual" onchange="updateSchedUI()"> Individuell</label>
+                        </div>
+
+                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.9rem; font-weight: 600;">Eingabe für "Allgemein" (€):</span>
+                            <input type="number" id="sched-global-discount" class="login-input" value="1.00" step="0.5" min="0.1" style="width: 100px; margin: 0;">
+                        </div>
+
+                        <div class="table-container" style="max-height: 250px; margin-bottom: 15px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">Aktiv</th>
+                                        <th>Produkt</th>
+                                        <th>Normalpreis</th>
+                                        <th>Individueller Rabatt (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sched-hh-products"></tbody>
+                            </table>
+                        </div>
+
+                        <button class="btn btn-success" onclick="addScheduleHH()">ZEITPLAN SPEICHERN</button>
+
+                        <h4 style="margin-top: 25px; margin-bottom: 10px;">Hinterlegte Zeitpläne:</h4>
+                        <div class="table-container" style="max-height: 180px;">
+                            <table>
+                                <thead><tr><th>Zeitraum / Tag</th><th>Von - Bis</th><th>Typ</th><th>Aktion</th></tr></thead>
+                                <tbody id="hh-schedule-list">
+                                    <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Zeitpläne hinterlegt.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REITER 3: Kellner -->
+            <div id="admin-tab-waiters" class="admin-sub-section">
+                <h3 style="font-size: 1.05rem; margin-top: 0;">Neuen Kellner anlegen:</h3>
+                <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <input type="text" id="new-waiter-name" class="login-input" placeholder="Name" style="margin:0; flex:2;">
+                    <input type="text" id="new-waiter-id" class="login-input" placeholder="4-stellige ID" maxlength="4" style="margin:0; flex:1;">
+                    <input type="password" id="new-waiter-pass" class="login-input" placeholder="Passwort" style="margin:0; flex:1;">
+                    <button class="btn btn-success" style="padding: 12px 20px;" onclick="addNewWaiter()">Kellner hinzufügen</button>
+                </div>
+
+                <h3 style="font-size: 1.05rem; margin-top: 10px;">Berechtigte Kellner & Admin-Status:</h3>
+                <div class="table-container" style="max-height: 300px;">
+                    <table>
+                        <thead>
+                            <tr><th>Name</th><th>ID</th><th>Admin-Rechte</th><th>Aktion</th></tr>
+                        </thead>
+                        <tbody id="waiters-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- REITER 4: Logs & System -->
+            <div id="admin-tab-logs" class="admin-sub-section">
+                <h3 style="font-size: 1.05rem; margin-top: 0;">An- und Abmelde-Logbuch:</h3>
+                <div class="table-container" style="max-height: 280px; margin-bottom: 25px;">
+                    <table>
+                        <thead>
+                            <tr><th>Datum & Uhrzeit</th><th>Name</th><th>ID</th><th>Aktion</th></tr>
+                        </thead>
+                        <tbody id="login-log-tbody">
+                            <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Einträge.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="btn btn-danger" style="padding: 12px 24px;" onclick="resetData()">System komplett zurücksetzen</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer>
+        <span>Cloud-Sync aktiv (Apple Design)</span>
+        <span>Umsatz heute: <strong id="total-revenue">0,00 €</strong></span>
+    </footer>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDSZ2r9G9328WMfL_KFZr0JqvrEVGmpdxo",
+            authDomain: "abi2027wun.firebaseapp.com",
+            projectId: "abi2027wun",
+            storageBucket: "abi2027wun.firebasestorage.app",
+            messagingSenderId: "1060588154453",
+            appId: "1:1060588154453:web:80025063f74e274c9feedc"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Core Data
+        let categories = ["Getränke", "Alkoholfrei", "Essen & Snacks"];
+        let products = [
+            { id: 1, name: "Bier 0,33l", price: 3.00, category: "Getränke" },
+            { id: 2, name: "Cola / Fanta", price: 2.50, category: "Alkoholfrei" },
+            { id: 3, name: "Wasser", price: 2.00, category: "Alkoholfrei" },
+            { id: 4, name: "Longdrink", price: 6.00, category: "Getränke" },
+            { id: 5, name: "Shot", price: 2.00, category: "Getränke" },
+            { id: 6, name: "Cocktail", price: 7.00, category: "Getränke" },
+            { id: 7, name: "Snack / Chips", price: 1.50, category: "Essen & Snacks" },
+            { id: 8, name: "Alkoholfreies", price: 3.00, category: "Alkoholfrei" }
+        ];
+
+        let cart = [];
+        let totalRevenue = 0;
+        let salesJournal = []; 
+        let itemCounts = {};   
+        let stockData = {};    
+        let stockLog = [];     
+        let loginLog = [];     
+        
+        let authorizedWaiters = {
+            "0001": { name: "Master", pass: "2112", isAdmin: true },
+            "0002": { name: "Julian", pass: "1234", isAdmin: false }
+        };
+
+        // Happy Hour Management
+        let isHappyHour = false;
+        let activeDiscounts = {}; 
+        let happyHourSchedules = [];
+        let showHappyHourToggleSetting = true;
+        
+        // Cart State & Badges
+        let activeCartBadge = '';
+        let activeCartFactor = 1.0;
+
+        let lowStockNotified = {}; 
+        let currentMultiplier = 1;
+        let currentWaiter = null;
+
+        function initApp() {
+            products.forEach(p => { 
+                if(stockData[p.id] === undefined) stockData[p.id] = 50; 
+            });
+
+            onSnapshot(doc(db, "kasse", "data"), (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    totalRevenue = data.totalRevenue || 0;
+                    salesJournal = data.salesJournal || [];
+                    itemCounts = data.itemCounts || {};
+                    stockData = data.stockData || {};
+                    stockLog = data.stockLog || [];
+                    loginLog = data.loginLog || [];
+                    
+                    if(data.authorizedWaiters) authorizedWaiters = data.authorizedWaiters;
+                    if (authorizedWaiters["0001"]) authorizedWaiters["0001"].isAdmin = true;
+
+                    products = data.products || products;
+                    categories = data.categories || categories;
+                    happyHourSchedules = data.happyHourSchedules || [];
+                    
+                    isHappyHour = data.isHappyHour || false;
+                    activeDiscounts = data.activeDiscounts || {};
+                    showHappyHourToggleSetting = data.showHappyHourToggleSetting !== undefined ? data.showHappyHourToggleSetting : true;
+
+                    // UI Updates
+                    document.getElementById('total-revenue').innerText = totalRevenue.toFixed(2) + ' €';
+                    document.getElementById('show-hh-toggle').checked = showHappyHourToggleSetting;
+                    document.getElementById('happy-hour-container').style.display = showHappyHourToggleSetting ? 'flex' : 'none';
+                    document.getElementById('happy-hour-toggle').checked = isHappyHour;
+
+                    updateStatusBadge();
+                    renderPosGrid();
+                    renderStockTable();
+                    renderStockLog();
+                    renderJournal();
+                    renderStats();
+                    renderWaitersTable();
+                    renderLoginLog();
+                    renderAdminProductsGrid();
+                    renderManualHHProducts();
+                    renderSchedHHProducts();
+                    renderSchedulesList();
+                    updateCartUI();
+                }
+            });
+
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        window.saveDataToCloud = async function() {
+            await setDoc(doc(db, "kasse", "data"), {
+                totalRevenue,
+                salesJournal,
+                itemCounts,
+                stockData,
+                stockLog,
+                loginLog,
+                authorizedWaiters,
+                products,
+                categories,
+                happyHourSchedules,
+                isHappyHour,
+                activeDiscounts,
+                showHappyHourToggleSetting
+            });
+        }
+
+        // ==========================================
+        // UI & NAVIGATION
+        // ==========================================
+        window.switchView = function(viewName) {
+            if (viewName === 'admin' && !currentWaiter.isAdmin) {
+                alert("Keine Admin-Berechtigung!");
+                return;
+            }
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            if (viewName === 'pos') { document.getElementById('view-pos').classList.add('active'); document.querySelectorAll('.tab-btn')[0].classList.add('active'); }
+            else if (viewName === 'stock') { document.getElementById('view-stock').classList.add('active'); document.querySelectorAll('.tab-btn')[1].classList.add('active'); }
+            else if (viewName === 'journal') { document.getElementById('view-journal').classList.add('active'); document.querySelectorAll('.tab-btn')[2].classList.add('active'); }
+            else if (viewName === 'admin') { document.getElementById('view-admin').classList.add('active'); document.getElementById('admin-tab-btn').classList.add('active'); }
+        }
+
+        window.switchAdminTab = function(tabName) {
+            document.querySelectorAll('.admin-sub-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.admin-sub-btn:not(.admin-hh-tab-btn)').forEach(el => el.classList.remove('active'));
+
+            if (tabName === 'products') { document.getElementById('admin-tab-products').classList.add('active'); document.querySelectorAll('.admin-sub-btn:not(.admin-hh-tab-btn)')[0].classList.add('active'); }
+            else if (tabName === 'happyhour') { document.getElementById('admin-tab-happyhour').classList.add('active'); document.querySelectorAll('.admin-sub-btn:not(.admin-hh-tab-btn)')[1].classList.add('active'); }
+            else if (tabName === 'waiters') { document.getElementById('admin-tab-waiters').classList.add('active'); document.querySelectorAll('.admin-sub-btn:not(.admin-hh-tab-btn)')[2].classList.add('active'); }
+            else if (tabName === 'logs') { document.getElementById('admin-tab-logs').classList.add('active'); document.querySelectorAll('.admin-sub-btn:not(.admin-hh-tab-btn)')[3].classList.add('active'); }
+        }
+
+        window.switchHHTab = function(tabName) {
+            document.querySelectorAll('.admin-hh-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('hh-sec-manual').style.display = 'none';
+            document.getElementById('hh-sec-schedule').style.display = 'none';
+
+            if(tabName === 'manual') {
+                document.querySelectorAll('.admin-hh-tab-btn')[0].classList.add('active');
+                document.getElementById('hh-sec-manual').style.display = 'block';
+            } else {
+                document.querySelectorAll('.admin-hh-tab-btn')[1].classList.add('active');
+                document.getElementById('hh-sec-schedule').style.display = 'block';
+            }
+        }
+
+        // ==========================================
+        // KELLNER MANAGEMENT
+        // ==========================================
+        window.addNewWaiter = function() {
+            const name = document.getElementById('new-waiter-name').value.trim();
+            const id = document.getElementById('new-waiter-id').value.trim();
+            const pass = document.getElementById('new-waiter-pass').value.trim();
+
+            if (!name || id.length !== 4 || !pass) {
+                alert("Bitte alle Felder ausfüllen (ID genau 4-stellig).");
+                return;
+            }
+
+            authorizedWaiters[id] = { name: name, pass: pass, isAdmin: false };
+            
+            document.getElementById('new-waiter-name').value = '';
+            document.getElementById('new-waiter-id').value = '';
+            document.getElementById('new-waiter-pass').value = '';
+            
+            renderWaitersTable(); 
+            window.saveDataToCloud(); 
+        }
+
+        window.toggleWaiterAdmin = function(id) {
+            if (id === "0001") { alert("Master hat immer Admin-Rechte."); return; }
+            authorizedWaiters[id].isAdmin = !authorizedWaiters[id].isAdmin;
+            window.saveDataToCloud();
+        }
+
+        window.removeWaiter = function(id) {
+            if (id === "0001") { alert("Master kann nicht gelöscht werden!"); return; }
+            if (confirm(`Kellner #${id} löschen?`)) {
+                delete authorizedWaiters[id];
+                window.saveDataToCloud();
+            }
+        }
+
+        function renderWaitersTable() {
+            const tbody = document.getElementById('waiters-tbody');
+            tbody.innerHTML = '';
+            for (const [id, data] of Object.entries(authorizedWaiters)) {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${data.name}</strong></td>
+                        <td>#${id}</td>
+                        <td><button class="btn ${data.isAdmin ? 'btn-success' : 'btn-danger'}" style="padding: 4px 10px; font-size: 0.8rem;" onclick="window.toggleWaiterAdmin('${id}')">${data.isAdmin ? 'Ja (Admin)' : 'Nein'}</button></td>
+                        <td>${id !== "0001" ? '<button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="window.removeWaiter(\'' + id + '\')">Löschen</button>' : '<span style="color: var(--accent); font-size: 0.85rem; font-weight: 600;">Master</span>'}</td>
+                    </tr>`;
+            }
+        }
+
+        // ==========================================
+        // HAPPY HOUR LOGIK
+        // ==========================================
+        
+        function updateStatusBadge() {
+            const badge = document.getElementById('hh-status-badge');
+            if(isHappyHour) {
+                badge.innerText = "Läuft aktuell!";
+                badge.className = "badge-status-active";
+            } else {
+                badge.innerText = "Inaktiv";
+                badge.className = "badge-status-inactive";
+            }
+        }
+
+        window.toggleShowHappyHourSetting = function() {
+            showHappyHourToggleSetting = document.getElementById('show-hh-toggle').checked;
+            window.saveDataToCloud();
+        }
+
+        window.toggleGlobalHappyHour = function(checked) {
+            if(checked) {
+                if(Object.keys(activeDiscounts).length === 0) {
+                    alert("Achtung: Es wurden im Admin-Bereich keine Produkte konfiguriert. Bitte starte sie manuell im Admin-Bereich.");
+                    document.getElementById('happy-hour-toggle').checked = false;
+                    return;
+                }
+                isHappyHour = true;
+            } else {
+                isHappyHour = false;
+            }
+            window.saveDataToCloud();
+            updateCartUI();
+            renderPosGrid();
+        }
+
+        // 1. Manuelle Happy Hour Funktionen
+        window.updateManualUI = function() {
+            const isGlobal = document.querySelector('input[name="manual_hh_mode"]:checked').value === 'global';
+            document.getElementById('manual-global-discount').disabled = !isGlobal;
+            document.querySelectorAll('.manual-ind-input').forEach(input => input.disabled = isGlobal);
+        }
+
+        function renderManualHHProducts() {
+            const tbody = document.getElementById('manual-hh-products');
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" class="manual-cb" value="${p.id}" checked style="width:18px; height:18px; cursor:pointer;"></td>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.price.toFixed(2)} €</td>
+                        <td><input type="number" class="manual-ind-input login-input" data-id="${p.id}" value="1.00" step="0.5" min="0.1" style="width: 80px; padding: 6px; margin: 0;" disabled></td>
+                    </tr>
+                `;
+            });
+        }
+
+        window.startManualHH = function() {
+            const isGlobal = document.querySelector('input[name="manual_hh_mode"]:checked').value === 'global';
+            const globalDisc = parseFloat(document.getElementById('manual-global-discount').value) || 0;
+            activeDiscounts = {};
+
+            document.querySelectorAll('.manual-cb:checked').forEach(cb => {
+                const id = parseInt(cb.value);
+                if (isGlobal) {
+                    activeDiscounts[id] = globalDisc;
+                } else {
+                    const indInput = document.querySelector(`.manual-ind-input[data-id="${id}"]`);
+                    activeDiscounts[id] = parseFloat(indInput.value) || 0;
+                }
+            });
+
+            if(Object.keys(activeDiscounts).length === 0) { alert("Du musst mindestens ein Produkt auswählen!"); return; }
+
+            isHappyHour = true;
+            window.saveDataToCloud();
+            alert("Manuelle Happy Hour erfolgreich gestartet!");
+        }
+
+        window.stopHH = function() {
+            isHappyHour = false;
+            activeDiscounts = {};
+            window.saveDataToCloud();
+            alert("Happy Hour beendet.");
+        }
+
+        // 2. Zeitplan Happy Hour Funktionen
+        window.updateSchedUI = function() {
+            const isGlobal = document.querySelector('input[name="sched_hh_mode"]:checked').value === 'global';
+            document.getElementById('sched-global-discount').disabled = !isGlobal;
+            document.querySelectorAll('.sched-ind-input').forEach(input => input.disabled = isGlobal);
+        }
+
+        function renderSchedHHProducts() {
+            const tbody = document.getElementById('sched-hh-products');
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" class="sched-cb" value="${p.id}" checked style="width:18px; height:18px; cursor:pointer;"></td>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.price.toFixed(2)} €</td>
+                        <td><input type="number" class="sched-ind-input login-input" data-id="${p.id}" value="1.00" step="0.5" min="0.1" style="width: 80px; padding: 6px; margin: 0;" disabled></td>
+                    </tr>
+                `;
+            });
+        }
+
+        window.addScheduleHH = function() {
+            const day = document.getElementById('sched-day').value.trim();
+            const start = document.getElementById('sched-start').value;
+            const end = document.getElementById('sched-end').value;
+            if(!day || !start || !end) { alert("Bitte Tag, Start- und Endzeit angeben."); return; }
+
+            const isGlobal = document.querySelector('input[name="sched_hh_mode"]:checked').value === 'global';
+            const globalDisc = parseFloat(document.getElementById('sched-global-discount').value) || 0;
+            
+            let storedDiscounts = {};
+            document.querySelectorAll('.sched-cb:checked').forEach(cb => {
+                const id = parseInt(cb.value);
+                if (isGlobal) storedDiscounts[id] = globalDisc;
+                else {
+                    const indInput = document.querySelector(`.sched-ind-input[data-id="${id}"]`);
+                    storedDiscounts[id] = parseFloat(indInput.value) || 0;
+                }
+            });
+
+            if(Object.keys(storedDiscounts).length === 0) { alert("Du musst mindestens ein Produkt auswählen!"); return; }
+
+            happyHourSchedules.push({ id: Date.now(), day: day, start: start, end: end, mode: isGlobal ? 'Allgemein' : 'Individuell', discounts: storedDiscounts });
+            document.getElementById('sched-day').value = '';
+            document.getElementById('sched-start').value = '';
+            document.getElementById('sched-end').value = '';
+            
+            window.saveDataToCloud();
+            alert("Zeitplan erfolgreich gespeichert!");
+        }
+
+        function renderSchedulesList() {
+            const tbody = document.getElementById('hh-schedule-list');
+            tbody.innerHTML = '';
+            if(happyHourSchedules.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Zeitpläne hinterlegt.</td></tr>'; return; }
+            happyHourSchedules.forEach(s => {
+                tbody.innerHTML += `<tr><td><strong>${s.day}</strong></td><td>${s.start} - ${s.end} Uhr</td><td>${s.mode}</td><td><button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.8rem;" onclick="window.removeScheduleHH(${s.id})">Löschen</button></td></tr>`;
+            });
+        }
+
+        window.removeScheduleHH = function(id) { happyHourSchedules = happyHourSchedules.filter(s => s.id !== id); window.saveDataToCloud(); }
+
+        // ==========================================
+        // KASSEN / POS LOGIK (RABATTE & BADGES)
+        // ==========================================
+
+        window.toggleCartBadge = function(type) {
+            if (activeCartBadge === type) {
+                activeCartBadge = '';
+                activeCartFactor = 1.0;
+            } else {
+                activeCartBadge = type;
+                activeCartFactor = (type === 'Q13') ? 0.0 : 0.5;
+            }
+            updateCartUI();
+        }
+
+        function getEffectivePrice(product) {
+            if (isHappyHour && activeDiscounts[product.id]) {
+                const discount = activeDiscounts[product.id];
+                return Math.max(0.00, product.price - discount); 
+            }
+            return product.price;
+        }
+
+        function renderPosGrid() {
+            const container = document.getElementById('pos-container');
+            container.innerHTML = '';
+
+            categories.forEach(cat => {
+                const catProducts = products.filter(p => (p.category || categories[0]) === cat);
+                if (catProducts.length === 0) return;
+
+                const group = document.createElement('div');
+                group.className = 'category-group';
+                group.innerHTML = `<div class="category-title">${cat}</div>`;
+                const grid = document.createElement('div');
+                grid.className = 'products-grid';
+
+                catProducts.forEach(p => {
+                    const stock = stockData[p.id] !== undefined ? stockData[p.id] : 50;
+                    const isSoldOut = stock <= 0;
+                    const isLow = stock < 5 && !isSoldOut;
+                    const effectivePrice = getEffectivePrice(p);
+                    const isDiscounted = (effectivePrice < p.price);
+
+                    const btn = document.createElement('div');
+                    let btnClass = 'product-btn';
+                    if (isSoldOut) btnClass += ' sold-out';
+                    else if (isLow) btnClass += ' low-stock';
+
+                    btn.className = btnClass;
+                    
+                    if (!isSoldOut) {
+                        btn.onclick = () => window.addToCart(p.id);
+                    }
+                    
+                    let priceHtml = `<span class="product-price">${effectivePrice.toFixed(2)} €</span>`;
+                    if (isDiscounted) {
+                        priceHtml = `<span class="product-price discounted"><span class="old-price">${p.price.toFixed(2)}</span>${effectivePrice.toFixed(2)} €</span>`;
+                    }
+
+                    let stockText = `Lager: ${stock}`;
+                    if (isSoldOut) stockText = `AUSVERKAUFT`;
+                    else if (isLow) stockText = `Lager: ${stock} ⚠️`;
+
+                    btn.innerHTML = `<span class="product-name">${p.name}</span>${priceHtml}<span class="product-stock-tag">${stockText}</span>`;
+                    grid.appendChild(btn);
+                });
+
+                group.appendChild(grid);
+                container.appendChild(group);
+            });
+        }
+
+        window.setMultiplier = function(val, btnElement) {
+            currentMultiplier = val;
+            document.querySelectorAll('.multiplier-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        window.addToCart = function(productId) {
+            const product = products.find(p => p.id === productId);
+            const effectivePrice = getEffectivePrice(product);
+            const currentStock = stockData[productId] !== undefined ? stockData[productId] : 50;
+            const qtyToAdd = currentMultiplier;
+
+            const cartItem = cart.find(item => item.id === productId && item.price === effectivePrice);
+            const currentQtyInCart = cartItem ? cartItem.qty : 0;
+
+            if (currentQtyInCart + qtyToAdd > currentStock) {
+                alert(`Nicht genügend Bestand! (Nur noch ${currentStock} da, Warenkorb: ${currentQtyInCart})`);
+                return;
+            }
+
+            if (cartItem) cartItem.qty += qtyToAdd;
+            else cart.push({ ...product, price: effectivePrice, qty: qtyToAdd });
+            
+            currentMultiplier = 1;
+            document.querySelectorAll('.multiplier-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.multiplier-btn')[0].classList.add('active');
+
+            updateCartUI();
+        }
+
+        window.removeFromCart = function(productId) { cart = cart.filter(item => item.id !== productId); updateCartUI(); }
+        
+        window.clearCart = function() { 
+            cart = []; 
+            activeCartBadge = '';
+            activeCartFactor = 1.0;
+            updateCartUI(); 
+        }
+
+        function updateCartUI() {
+            const list = document.getElementById('cart-list');
+            const payBtn = document.getElementById('pay-btn');
+            const btnQ13 = document.getElementById('btn-q13');
+            const btnVip = document.getElementById('btn-vip');
+            
+            list.innerHTML = '';
+            
+            if (cart.length === 0) {
+                list.innerHTML = '<li style="text-align: center; color: var(--text-secondary); padding: 20px;">Warenkorb ist leer</li>';
+                document.getElementById('total-price').innerText = '0,00 €';
+                payBtn.disabled = btnQ13.disabled = btnVip.disabled = true;
+                
+                // Button Visuals zurücksetzen wenn leer
+                btnQ13.innerText = 'Q13 (Frei)';
+                btnVip.innerText = 'VIP (50%)';
+                btnQ13.style.boxShadow = 'none';
+                btnVip.style.boxShadow = 'none';
+                
+                return;
+            }
+            
+            let total = 0;
+            cart.forEach(item => {
+                total += item.price * item.qty;
+                list.innerHTML += `<li class="cart-item"><span>${item.qty}x ${item.name}</span><span>${(item.price * item.qty).toFixed(2)} € <button onclick="window.removeFromCart(${item.id})">X</button></span></li>`;
+            });
+            
+            // Rabattfaktor auf Gesamtsumme anwenden
+            const finalTotal = total * activeCartFactor;
+            
+            let badgeHtml = '';
+            if (activeCartBadge === 'Q13') badgeHtml = ' <span style="background: #f3e8ff; color: #7c3aed; padding: 2px 8px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px;">Q13</span>';
+            if (activeCartBadge === 'VIP') badgeHtml = ' <span style="background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px;">VIP</span>';
+            
+            document.getElementById('total-price').innerHTML = finalTotal.toFixed(2) + ' €' + badgeHtml;
+            
+            // Button Styles (Gedrückt / Aktiv markieren)
+            btnQ13.innerText = activeCartBadge === 'Q13' ? 'Q13 (Aktiv)' : 'Q13 (Frei)';
+            btnQ13.style.boxShadow = activeCartBadge === 'Q13' ? '0 0 0 3px var(--purple)' : 'none';
+            btnQ13.style.opacity = (activeCartBadge === '' || activeCartBadge === 'Q13') ? '1' : '0.5';
+
+            btnVip.innerText = activeCartBadge === 'VIP' ? 'VIP (Aktiv)' : 'VIP (50%)';
+            btnVip.style.boxShadow = activeCartBadge === 'VIP' ? '0 0 0 3px var(--info)' : 'none';
+            btnVip.style.opacity = (activeCartBadge === '' || activeCartBadge === 'VIP') ? '1' : '0.5';
+
+            payBtn.disabled = btnQ13.disabled = btnVip.disabled = false;
+
+            // Rückgeld neu berechnen nach Faktor-Änderung
+            window.calculateChange();
+        }
+
+        // ==========================================
+        // SYSTEM & WEITERE FUNKTIONEN
+        // ==========================================
+        
+        window.performLogin = function() {
+            const name = document.getElementById('login-name').value.trim();
+            const id = document.getElementById('login-id').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+
+            const waiter = authorizedWaiters[id];
+            if (!waiter || waiter.name.toLowerCase() !== name.toLowerCase() || waiter.pass !== pass) {
+                alert("Fehler: Unbekannte ID, falscher Name oder falsches Passwort!");
+                return;
+            }
+
+            const isAdmin = (id === "0001" || waiter.isAdmin);
+            currentWaiter = { name: waiter.name, id: id, isAdmin: isAdmin };
+            document.getElementById('current-waiter-display').innerText = `${currentWaiter.name} (#${currentWaiter.id})`;
+            document.getElementById('login-overlay').style.display = 'none';
+
+            if (currentWaiter.isAdmin) document.getElementById('admin-tab-btn').style.display = 'block';
+            else document.getElementById('admin-tab-btn').style.display = 'none';
+
+            const now = new Date();
+            loginLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Angemeldet' });
+            window.saveDataToCloud();
+        }
+
+        window.performLogout = function() {
+            if (!currentWaiter) return;
+            const now = new Date();
+            loginLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Abgemeldet' });
+            window.saveDataToCloud();
+
+            currentWaiter = null;
+            document.getElementById('login-name').value = '';
+            document.getElementById('login-id').value = '';
+            document.getElementById('login-pass').value = '';
+            document.getElementById('login-overlay').style.display = 'flex';
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-datetime').innerText = `${now.toLocaleDateString()}, ${now.toLocaleTimeString()}`;
+        }
+
+        window.toggleChangeCalculator = function() {
+            const box = document.getElementById('change-box');
+            if (document.getElementById('change-toggle').checked) box.classList.add('active');
+            else { box.classList.remove('active'); document.getElementById('cash-given-input').value = ''; document.getElementById('change-amount').innerText = '0,00 €'; }
+        }
+
+        window.addCash = function(amount) {
+            const input = document.getElementById('cash-given-input');
+            input.value = ((parseFloat(input.value) || 0) + amount).toFixed(2);
+            window.calculateChange();
+        }
+
+        window.setExactCash = function() {
+            let total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            total = total * activeCartFactor; // Rabattfaktor anwenden
+            document.getElementById('cash-given-input').value = total.toFixed(2);
+            window.calculateChange();
+        }
+
+        window.calculateChange = function() {
+            let total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            total = total * activeCartFactor; // Rabattfaktor anwenden
+
+            const given = parseFloat(document.getElementById('cash-given-input').value) || 0;
+            const change = given - total;
+            const changeEl = document.getElementById('change-amount');
+            
+            if (change >= 0) { changeEl.innerText = change.toFixed(2) + ' €'; changeEl.style.color = 'var(--success)'; } 
+            else { changeEl.innerText = 'Zu wenig!'; changeEl.style.color = 'var(--danger)'; }
+        }
+
+        window.checkout = function() { 
+            // Nimmt nun die aktuell gesicherten Rabattfaktoren
+            processCheckout(activeCartFactor, activeCartBadge); 
+        }
+
+        function processCheckout(payFactor, badgeType) {
+            const currentCartBackup = JSON.parse(JSON.stringify(cart));
+            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * payFactor;
+            
+            totalRevenue += total;
+            
+            // Warenkorb und Badges nach Kauf leeren/zurücksetzen
+            cart = [];
+            activeCartBadge = '';
+            activeCartFactor = 1.0;
+            updateCartUI();
+
+            currentCartBackup.forEach(item => {
+                stockData[item.id] = Math.max(0, (stockData[item.id] || 50) - item.qty);
+                itemCounts[item.name] = (itemCounts[item.name] || 0) + item.qty;
+            });
+
+            const now = new Date();
+            salesJournal.unshift({
+                id: Date.now(),
+                time: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(),
+                waiter: currentWaiter ? `${currentWaiter.name} (#${currentWaiter.id})` : 'Unbekannt',
+                items: currentCartBackup,
+                total,
+                badge: badgeType,
+                happyHourActive: isHappyHour,
+                storniert: false
+            });
+
+            window.saveDataToCloud();
+            alert(`Bezahlt! Summe: ${total.toFixed(2)} € ${badgeType ? '(' + badgeType + ')' : ''}`);
+        }
+
+        window.stornoEntry = function(entryId) {
+            const entry = salesJournal.find(e => e.id === entryId);
+            if (!entry || entry.storniert) return;
+            if (!confirm("Möchtest du diese Bestellung wirklich stornieren? Betrag wird abgezogen und Artikel wandern ins Lager zurück.")) return;
+
+            totalRevenue = Math.max(0, totalRevenue - entry.total);
+            entry.storniert = true;
+
+            const now = new Date();
+            entry.items.forEach(item => {
+                stockData[item.id] = (stockData[item.id] || 50) + item.qty;
+                itemCounts[item.name] = Math.max(0, (itemCounts[item.name] || 0) - item.qty);
+                stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `+${item.qty} Stück (Storno durch ${currentWaiter.name})` });
+            });
+            window.saveDataToCloud();
+            alert("Bestellung erfolgreich storniert!");
+        }
+
+        window.addCategory = function() {
+            const catName = document.getElementById('new-cat-name').value.trim();
+            if (!catName || categories.includes(catName)) { alert("Ungültig oder vorhanden."); return; }
+            categories.push(catName);
+            document.getElementById('new-cat-name').value = '';
+            window.saveDataToCloud();
+        }
+
+        window.addNewProduct = function() {
+            const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+            products.push({ id: newId, name: "Neues Produkt", price: 2.00, category: categories[0] || "Allgemein" });
+            stockData[newId] = 50;
+            window.saveDataToCloud();
+        }
+
+        window.deleteProduct = function(id) {
+            if (confirm("Produkt wirklich löschen?")) { products = products.filter(p => p.id !== id); window.saveDataToCloud(); }
+        }
+
+        window.updateProductField = function(id, field, value) {
+            const p = products.find(prod => prod.id === id);
+            if (p) {
+                if (field === 'price') p.price = parseFloat(value) || 0;
+                else if (field === 'name') p.name = value;
+                else if (field === 'category') p.category = value;
+                window.saveDataToCloud();
+            }
+        }
+
+        function renderAdminProductsGrid() {
+            const grid = document.getElementById('admin-products-grid');
+            grid.innerHTML = '';
+            products.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'admin-product-card';
+                let catOptions = categories.map(c => `<option value="${c}" ${c === (p.category || categories[0]) ? 'selected' : ''}>${c}</option>`).join('');
+                card.innerHTML = `
+                    <button class="admin-delete-badge" onclick="window.deleteProduct(${p.id})">×</button>
+                    <input type="text" value="${p.name}" onchange="window.updateProductField(${p.id}, 'name', this.value)" placeholder="Produktname">
+                    <input type="number" value="${p.price.toFixed(2)}" step="0.5" onchange="window.updateProductField(${p.id}, 'price', this.value)" placeholder="Preis (€)">
+                    <select onchange="window.updateProductField(${p.id}, 'category', this.value)">${catOptions}</select>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderStockTable() {
+            const tbody = document.getElementById('stock-tbody');
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                const stock = stockData[p.id] !== undefined ? stockData[p.id] : 50;
+                const tr = document.createElement('tr');
+                if (stock < 5) tr.style.backgroundColor = '#fff5f5';
+                tr.innerHTML = `<td><strong>${p.name}</strong></td><td>${p.price.toFixed(2)} €</td><td><input type="number" class="login-input" value="${stock}" style="width:70px; padding:6px; margin:0; text-align:center;" onchange="window.updateStockWithAuth(${p.id}, this)"></td><td>${stock <= 0 ? '<span style="color: var(--danger); font-weight: bold;">🚫 Leer</span>' : (stock < 5 ? '<span style="color: var(--warning); font-weight: bold;">⚠️ < 5</span>' : '<span style="color: var(--success); font-weight: bold;">OK</span>')}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.updateStockWithAuth = function(productId, inputElement) {
+            const pass = prompt("Admin-Passwort zum Ändern des Lagers:");
+            if (pass !== "2112") { alert("Falsches Passwort!"); renderStockTable(); return; }
+            const newValue = parseInt(inputElement.value) || 0;
+            stockData[productId] = newValue;
+            
+            const product = products.find(p => p.id === productId);
+            const now = new Date();
+            stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: product ? product.name : 'Unbekannt', stock: `Auf ${newValue} geändert (Admin)` });
+            window.saveDataToCloud();
+        }
+
+        function renderStockLog() {
+            const tbody = document.getElementById('stock-log-tbody');
+            tbody.innerHTML = '';
+            if (stockLog.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Noch keine Einträge.</td></tr>'; return; }
+            stockLog.forEach(log => { tbody.innerHTML += `<tr><td>${log.dateTime}</td><td><strong>${log.itemName}</strong></td><td><span>${log.stock}</span></td></tr>`; });
+        }
+
+        function renderJournal() {
+            const tbody = document.getElementById('journal-tbody');
+            tbody.innerHTML = '';
+            if (salesJournal.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Noch keine Verkäufe.</td></tr>'; return; }
+            salesJournal.forEach(e => {
+                let items = '<ul style="margin: 0; padding-left: 15px;">';
+                e.items.forEach((i) => items += `<li>${i.qty}x ${i.name} (${(i.price * i.qty).toFixed(2)} €)</li>`);
+                items += '</ul>';
+                
+                let badgeHtml = '';
+                if (e.storniert) badgeHtml = '<span style="background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin-left: 5px;">STORNIERT</span>';
+                else if (e.badge) badgeHtml = `<span style="background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin-left: 5px;">${e.badge}</span>`;
+                
+                if (e.happyHourActive && !e.storniert) {
+                    badgeHtml += `<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin-left: 5px;">Happy Hour</span>`;
+                }
+
+                let actionBtns = '';
+                if (!e.storniert) actionBtns += `<button class="btn btn-warning" style="padding: 5px 10px; font-size: 0.8rem;" onclick="window.stornoEntry(${e.id})">Storno</button>`;
+
+                tbody.innerHTML += `<tr style="${e.storniert ? 'opacity: 0.6; background-color: #fff1f2;' : ''}"><td>${e.time} ${badgeHtml}</td><td>${e.waiter}</td><td>${items}</td><td><strong>${e.total.toFixed(2)} €</strong></td><td>${actionBtns}</td></tr>`;
+            });
+        }
+
+        function renderStats() {
+            const grid = document.getElementById('stats-grid');
+            grid.innerHTML = '';
+            products.forEach(p => { grid.innerHTML += `<div class="stat-card"><h4>${p.name}</h4><div class="value">${itemCounts[p.name] || 0} Stück</div></div>`; });
+        }
+
+        function renderLoginLog() {
+            const tbody = document.getElementById('login-log-tbody');
+            tbody.innerHTML = '';
+            if (loginLog.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Anmeldungen.</td></tr>'; return; }
+            loginLog.forEach(log => { tbody.innerHTML += `<tr><td>${log.dateTime}</td><td><strong>${log.name}</strong></td><td>#${log.id}</td><td><span style="font-weight: 600; color: ${log.action === 'Angemeldet' ? 'var(--success)' : 'var(--danger)'};">${log.action}</span></td></tr>`; });
+        }
+
+        window.exportToCSV = function() {
+            if (salesJournal.length === 0) { alert("Keine Daten."); return; }
+            let csv = "data:text/csv;charset=utf-8,Datum & Uhrzeit;Kellner;Bestellung;Vermerk;Happy Hour;Gesamtbetrag\n";
+            salesJournal.forEach(e => {
+                let vermerk = e.storniert ? 'STORNIERT' : (e.badge || 'Regulär');
+                csv += `"${e.time}","${e.waiter}","${e.items.map(i => i.qty + 'x ' + i.name).join(' | ')}","${vermerk}","${e.happyHourActive ? 'Ja' : 'Nein'}","${e.total.toFixed(2).replace('.', ',')}"\r\n`;
+            });
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csv)); link.setAttribute("download", "kassenbuch.csv");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        window.resetData = function() {
+            if (!currentWaiter.isAdmin) return;
+            if (confirm("Sicher? ALLES wird gelöscht.")) {
+                totalRevenue = 0; salesJournal = []; itemCounts = {}; stockLog = []; loginLog = []; happyHourSchedules = []; isHappyHour = false; activeDiscounts = {};
+                authorizedWaiters = { "0001": { name: "Master", pass: "2112", isAdmin: true } };
+                window.saveDataToCloud();
+            }
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
