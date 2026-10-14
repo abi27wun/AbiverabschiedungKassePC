@@ -148,30 +148,6 @@
             color: var(--text-secondary);
         }
 
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-
-        .switch input { opacity: 0; width: 0; height: 0; }
-
-        .slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #d1d1d6; transition: .3s; border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px;
-            background-color: white; transition: .3s; border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        input:checked + .slider { background-color: var(--success); }
-        input:checked + .slider.happy-hour-slider { background-color: var(--warning); }
-        input:checked + .slider:before { transform: translateX(20px); }
-
         .view-section { display: none; flex: 1; overflow: hidden; flex-direction: column; }
         .view-section.active { display: flex; }
 
@@ -244,7 +220,6 @@
         .admin-sub-btn { background: #e3e3e8; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: var(--text-main); transition: all 0.2s; }
         .admin-sub-btn.active { background: var(--accent); color: white; }
         
-        /* HIER IST DER FIX: overflow-y: auto anstelle von overflow: hidden */
         .admin-sub-section { display: none; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 5px; }
         .admin-sub-section.active { display: flex; }
 
@@ -313,12 +288,8 @@
         </div>
         <div class="header-controls">
             <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="performLogout()">Abmelden</button>
-            <div class="toggle-container" id="happy-hour-container" style="display: flex;">
-                <span style="color: var(--warning); font-weight: bold;">⚡ Happy Hour</span>
-                <label class="switch">
-                    <input type="checkbox" id="happy-hour-toggle" onchange="toggleGlobalHappyHour(this.checked)">
-                    <span class="slider happy-hour-slider"></span>
-                </label>
+            <div class="toggle-container">
+                <span id="header-hh-status" class="badge-status-inactive" style="padding: 4px 10px; border-radius: 8px; font-size: 0.8rem;">⚡ Happy Hour: Inaktiv</span>
             </div>
             <div class="toggle-container">
                 <span>Rückgeld</span>
@@ -341,7 +312,6 @@
         <div class="main-container">
             <div class="section">
                 <h2 class="section-title">Getränke & Produkte</h2>
-                <!-- Multiplikator Leiste x1 bis x20 -->
                 <div class="multiplier-bar" id="multiplier-bar">
                     <button class="multiplier-btn active" onclick="setMultiplier(1, this)">x1</button>
                     <button class="multiplier-btn" onclick="setMultiplier(2, this)">x2</button>
@@ -402,7 +372,11 @@
     <!-- LAGER -->
     <div id="view-stock" class="view-section">
         <div class="section" style="flex: 1; overflow-y: auto;">
-            <h2 class="section-title">Lagerbestand verwalten (Passwortgeschützt)</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 class="section-title" style="margin:0; border:none;">Lagerbestand & Log</h2>
+                <button class="btn btn-primary" id="stock-unlock-btn" style="padding: 6px 14px; font-size: 0.85rem;" onclick="unlockStockAdminMode()">🔓 Admin-Modus entsperren</button>
+            </div>
+            
             <div class="table-container">
                 <table>
                     <thead>
@@ -417,7 +391,10 @@
                 </table>
             </div>
             
-            <h2 class="section-title" style="margin-top: 20px;">Lager- & Storno-Logbuch</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 10px;">
+                <h2 class="section-title" style="margin:0; border:none;">Lager- & Storno-Logbuch</h2>
+                <button class="btn btn-danger" id="clear-stock-log-btn" style="display: none; padding: 4px 10px; font-size: 0.75rem;" onclick="clearStockLog()">Logbuch löschen</button>
+            </div>
             <div class="table-container" style="max-height: 200px;">
                 <table>
                     <thead>
@@ -491,36 +468,25 @@
 
             <!-- REITER 2: Happy Hour Management -->
             <div id="admin-tab-happyhour" class="admin-sub-section">
-                
-                <!-- OBERE LEISTE: STATUS & EINSTELLUNG -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea;">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <h3 style="margin: 0; font-size: 1.1rem;">Live Status:</h3>
                         <span id="hh-status-badge" class="badge-status-inactive">Inaktiv</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 0.85rem; font-weight: 500;">Schalter in der Kasse anzeigen:</span>
-                        <label class="switch">
-                            <input type="checkbox" id="show-hh-toggle" onchange="toggleShowHappyHourSetting()" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
                 </div>
 
-                <!-- UNTER-REITER: Manuell oder Zeitplan -->
                 <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f2; padding-bottom: 12px;">
                     <button class="admin-sub-btn admin-hh-tab-btn active" onclick="switchHHTab('manual')">Manuell Steuern</button>
                     <button class="admin-sub-btn admin-hh-tab-btn" onclick="switchHHTab('schedule')">Zeitpläne verwalten</button>
                 </div>
 
-                <!-- BLOCK 1: MANUELLE HAPPY HOUR -->
                 <div id="hh-sec-manual" style="display: block;">
                     <div style="background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; margin-bottom: 25px; box-shadow: var(--shadow);">
                         <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--accent);">Manuelle Happy Hour Starten</h3>
                         
                         <div class="radio-group">
-                            <label><input type="radio" name="manual_hh_mode" value="global" onchange="updateManualUI()" checked> Allgemein (Gleicher Rabatt für alle gewählten Produkte)</label>
-                            <label><input type="radio" name="manual_hh_mode" value="individual" onchange="updateManualUI()"> Individuell (Rabatt pro Produkt einstellen)</label>
+                            <label><input type="radio" name="manual_hh_mode" value="global" onchange="updateManualUI()" checked> Allgemein (Gleicher Rabatt)</label>
+                            <label><input type="radio" name="manual_hh_mode" value="individual" onchange="updateManualUI()"> Individuell</label>
                         </div>
 
                         <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
@@ -549,7 +515,6 @@
                     </div>
                 </div>
 
-                <!-- BLOCK 2: ZEITPLAN HAPPY HOUR -->
                 <div id="hh-sec-schedule" style="display: none;">
                     <div style="background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; margin-bottom: 20px; box-shadow: var(--shadow);">
                         <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--success);">Zeitplan hinzufügen</h3>
@@ -654,9 +619,9 @@
 
         const firebaseConfig = {
             apiKey: "AIzaSyDSZ2r9G9328WMfL_KFZr0JqvrEVGmpdxo",
-            authDomain: "abi2027wun.firebaseapp.com",
-            projectId: "abi2027wun",
-            storageBucket: "abi2027wun.firebasestorage.app",
+            authDomain: "abi27wun.firebaseapp.com",
+            projectId: "abi27wun",
+            storageBucket: "abi27wun.firebasestorage.app",
             messagingSenderId: "1060588154453",
             appId: "1:1060588154453:web:80025063f74e274c9feedc"
         };
@@ -664,7 +629,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Core Data
         let categories = ["Getränke", "Alkoholfrei", "Essen & Snacks"];
         let products = [
             { id: 1, name: "Bier 0,33l", price: 3.00, category: "Getränke" },
@@ -686,23 +650,19 @@
         let loginLog = [];     
         
         let authorizedWaiters = {
-            "0001": { name: "Master", pass: "2112", isAdmin: true },
+            "0001": { name: "Jonas(Administrator)", pass: "2112", isAdmin: true },
             "0002": { name: "Julian", pass: "1234", isAdmin: false }
         };
 
-        // Happy Hour Management
         let isHappyHour = false;
         let activeDiscounts = {}; 
         let happyHourSchedules = [];
-        let showHappyHourToggleSetting = true;
         
-        // Cart State & Badges
         let activeCartBadge = '';
         let activeCartFactor = 1.0;
-
-        let lowStockNotified = {}; 
         let currentMultiplier = 1;
         let currentWaiter = null;
+        let stockAdminUnlocked = false;
 
         function initApp() {
             products.forEach(p => { 
@@ -720,7 +680,9 @@
                     loginLog = data.loginLog || [];
                     
                     if(data.authorizedWaiters) authorizedWaiters = data.authorizedWaiters;
-                    if (authorizedWaiters["0001"]) authorizedWaiters["0001"].isAdmin = true;
+                    
+                    // Jonas (Administrator) immer absichern
+                    authorizedWaiters["0001"] = { name: "Jonas(Administrator)", pass: "2112", isAdmin: true };
 
                     products = data.products || products;
                     categories = data.categories || categories;
@@ -728,13 +690,9 @@
                     
                     isHappyHour = data.isHappyHour || false;
                     activeDiscounts = data.activeDiscounts || {};
-                    showHappyHourToggleSetting = data.showHappyHourToggleSetting !== undefined ? data.showHappyHourToggleSetting : true;
 
-                    // UI Updates
                     document.getElementById('total-revenue').innerText = totalRevenue.toFixed(2) + ' €';
-                    document.getElementById('show-hh-toggle').checked = showHappyHourToggleSetting;
-                    document.getElementById('happy-hour-container').style.display = showHappyHourToggleSetting ? 'flex' : 'none';
-                    document.getElementById('happy-hour-toggle').checked = isHappyHour;
+                    updateHappyHourHeaderStatus();
 
                     updateStatusBadge();
                     renderPosGrid();
@@ -769,14 +727,10 @@
                 categories,
                 happyHourSchedules,
                 isHappyHour,
-                activeDiscounts,
-                showHappyHourToggleSetting
+                activeDiscounts
             });
         }
 
-        // ==========================================
-        // UI & NAVIGATION
-        // ==========================================
         window.switchView = function(viewName) {
             if (viewName === 'admin' && !currentWaiter.isAdmin) {
                 alert("Keine Admin-Berechtigung!");
@@ -815,6 +769,70 @@
             }
         }
 
+        function updateHappyHourHeaderStatus() {
+            const statusEl = document.getElementById('header-hh-status');
+            if (isHappyHour) {
+                statusEl.innerText = "⚡ Happy Hour: Aktiv";
+                statusEl.className = "badge-status-active";
+            } else {
+                statusEl.innerText = "⚡ Happy Hour: Inaktiv";
+                statusEl.className = "badge-status-inactive";
+            }
+        }
+
+        // ==========================================
+        // LAGER ADMIN MODUS
+        // ==========================================
+        window.unlockStockAdminMode = function() {
+            const pass = prompt("Bitte Admin-Passwort eingeben:");
+            // Prüfen ob das Passwort mit einem Admin übereinstimmt
+            let matchedAdmin = false;
+            for (const [id, w] of Object.entries(authorizedWaiters)) {
+                if (w.isAdmin && w.pass === pass) {
+                    matchedAdmin = true;
+                    break;
+                }
+            }
+            if (pass === "2112" || matchedAdmin) {
+                stockAdminUnlocked = true;
+                document.getElementById('stock-unlock-btn').innerText = "🔒 Admin-Modus gesperrt";
+                document.getElementById('stock-unlock-btn').className = "btn btn-danger";
+                document.getElementById('stock-unlock-btn').setAttribute("onclick", "lockStockAdminMode()");
+                document.getElementById('clear-stock-log-btn').style.display = 'inline-block';
+                renderStockTable();
+                alert("Lager-Admin-Modus entsperrt!");
+            } else {
+                alert("Falsches Passwort oder keine Admin-Rechte!");
+            }
+        }
+
+        window.lockStockAdminMode = function() {
+            stockAdminUnlocked = false;
+            document.getElementById('stock-unlock-btn').innerText = "🔓 Admin-Modus entsperren";
+            document.getElementById('stock-unlock-btn').className = "btn btn-primary";
+            document.getElementById('stock-unlock-btn').setAttribute("onclick", "unlockStockAdminMode()");
+            document.getElementById('clear-stock-log-btn').style.display = 'none';
+            renderStockTable();
+        }
+
+        window.updateStockValue = function(productId, val) {
+            if (!stockAdminUnlocked) return;
+            const newVal = parseInt(val) || 0;
+            stockData[productId] = newVal;
+            const product = products.find(p => p.id === productId);
+            const now = new Date();
+            stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: product ? product.name : 'Unbekannt', stock: `Auf ${newVal} geändert durch ${currentWaiter.name}` });
+            window.saveDataToCloud();
+        }
+
+        window.clearStockLog = function() {
+            if (!stockAdminUnlocked) return;
+            if (confirm("Möchtest du das gesamte Lager-Logbuch löschen?")) {
+                stockLog = [];
+                window.saveDataToCloud();
+            }
+        }
+
         // ==========================================
         // KELLNER MANAGEMENT
         // ==========================================
@@ -829,23 +847,21 @@
             }
 
             authorizedWaiters[id] = { name: name, pass: pass, isAdmin: false };
-            
             document.getElementById('new-waiter-name').value = '';
             document.getElementById('new-waiter-id').value = '';
             document.getElementById('new-waiter-pass').value = '';
-            
             renderWaitersTable(); 
             window.saveDataToCloud(); 
         }
 
         window.toggleWaiterAdmin = function(id) {
-            if (id === "0001") { alert("Master hat immer Admin-Rechte."); return; }
+            if (id === "0001") { alert("Jonas(Administrator) hat immer Admin-Rechte."); return; }
             authorizedWaiters[id].isAdmin = !authorizedWaiters[id].isAdmin;
             window.saveDataToCloud();
         }
 
         window.removeWaiter = function(id) {
-            if (id === "0001") { alert("Master kann nicht gelöscht werden!"); return; }
+            if (id === "0001") { alert("Jonas(Administrator) kann nicht gelöscht werden!"); return; }
             if (confirm(`Kellner #${id} löschen?`)) {
                 delete authorizedWaiters[id];
                 window.saveDataToCloud();
@@ -861,7 +877,7 @@
                         <td><strong>${data.name}</strong></td>
                         <td>#${id}</td>
                         <td><button class="btn ${data.isAdmin ? 'btn-success' : 'btn-danger'}" style="padding: 4px 10px; font-size: 0.8rem;" onclick="window.toggleWaiterAdmin('${id}')">${data.isAdmin ? 'Ja (Admin)' : 'Nein'}</button></td>
-                        <td>${id !== "0001" ? '<button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="window.removeWaiter(\'' + id + '\')">Löschen</button>' : '<span style="color: var(--accent); font-size: 0.85rem; font-weight: 600;">Master</span>'}</td>
+                        <td>${id !== "0001" ? '<button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="window.removeWaiter(\'' + id + '\')">Löschen</button>' : '<span style="color: var(--accent); font-size: 0.85rem; font-weight: 600;">Admin</span>'}</td>
                     </tr>`;
             }
         }
@@ -869,7 +885,6 @@
         // ==========================================
         // HAPPY HOUR LOGIK
         // ==========================================
-        
         function updateStatusBadge() {
             const badge = document.getElementById('hh-status-badge');
             if(isHappyHour) {
@@ -879,30 +894,9 @@
                 badge.innerText = "Inaktiv";
                 badge.className = "badge-status-inactive";
             }
+            updateHappyHourHeaderStatus();
         }
 
-        window.toggleShowHappyHourSetting = function() {
-            showHappyHourToggleSetting = document.getElementById('show-hh-toggle').checked;
-            window.saveDataToCloud();
-        }
-
-        window.toggleGlobalHappyHour = function(checked) {
-            if(checked) {
-                if(Object.keys(activeDiscounts).length === 0) {
-                    alert("Achtung: Es wurden im Admin-Bereich keine Produkte konfiguriert. Bitte starte sie manuell im Admin-Bereich.");
-                    document.getElementById('happy-hour-toggle').checked = false;
-                    return;
-                }
-                isHappyHour = true;
-            } else {
-                isHappyHour = false;
-            }
-            window.saveDataToCloud();
-            updateCartUI();
-            renderPosGrid();
-        }
-
-        // 1. Manuelle Happy Hour Funktionen
         window.updateManualUI = function() {
             const isGlobal = document.querySelector('input[name="manual_hh_mode"]:checked').value === 'global';
             document.getElementById('manual-global-discount').disabled = !isGlobal;
@@ -931,16 +925,14 @@
 
             document.querySelectorAll('.manual-cb:checked').forEach(cb => {
                 const id = parseInt(cb.value);
-                if (isGlobal) {
-                    activeDiscounts[id] = globalDisc;
-                } else {
+                if (isGlobal) activeDiscounts[id] = globalDisc;
+                else {
                     const indInput = document.querySelector(`.manual-ind-input[data-id="${id}"]`);
                     activeDiscounts[id] = parseFloat(indInput.value) || 0;
                 }
             });
 
             if(Object.keys(activeDiscounts).length === 0) { alert("Du musst mindestens ein Produkt auswählen!"); return; }
-
             isHappyHour = true;
             window.saveDataToCloud();
             alert("Manuelle Happy Hour erfolgreich gestartet!");
@@ -953,7 +945,6 @@
             alert("Happy Hour beendet.");
         }
 
-        // 2. Zeitplan Happy Hour Funktionen
         window.updateSchedUI = function() {
             const isGlobal = document.querySelector('input[name="sched_hh_mode"]:checked').value === 'global';
             document.getElementById('sched-global-discount').disabled = !isGlobal;
@@ -1000,7 +991,6 @@
             document.getElementById('sched-day').value = '';
             document.getElementById('sched-start').value = '';
             document.getElementById('sched-end').value = '';
-            
             window.saveDataToCloud();
             alert("Zeitplan erfolgreich gespeichert!");
         }
@@ -1017,9 +1007,8 @@
         window.removeScheduleHH = function(id) { happyHourSchedules = happyHourSchedules.filter(s => s.id !== id); window.saveDataToCloud(); }
 
         // ==========================================
-        // KASSEN / POS LOGIK (RABATTE & BADGES)
+        // KASSEN / POS LOGIK
         // ==========================================
-
         window.toggleCartBadge = function(type) {
             if (activeCartBadge === type) {
                 activeCartBadge = '';
@@ -1066,10 +1055,7 @@
                     else if (isLow) btnClass += ' low-stock';
 
                     btn.className = btnClass;
-                    
-                    if (!isSoldOut) {
-                        btn.onclick = () => window.addToCart(p.id);
-                    }
+                    if (!isSoldOut) btn.onclick = () => window.addToCart(p.id);
                     
                     let priceHtml = `<span class="product-price">${effectivePrice.toFixed(2)} €</span>`;
                     if (isDiscounted) {
@@ -1115,7 +1101,6 @@
             currentMultiplier = 1;
             document.querySelectorAll('.multiplier-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.multiplier-btn')[0].classList.add('active');
-
             updateCartUI();
         }
 
@@ -1140,13 +1125,10 @@
                 list.innerHTML = '<li style="text-align: center; color: var(--text-secondary); padding: 20px;">Warenkorb ist leer</li>';
                 document.getElementById('total-price').innerText = '0,00 €';
                 payBtn.disabled = btnQ13.disabled = btnVip.disabled = true;
-                
-                // Button Visuals zurücksetzen wenn leer
                 btnQ13.innerText = 'Q13 (Frei)';
                 btnVip.innerText = 'VIP (50%)';
                 btnQ13.style.boxShadow = 'none';
                 btnVip.style.boxShadow = 'none';
-                
                 return;
             }
             
@@ -1156,16 +1138,13 @@
                 list.innerHTML += `<li class="cart-item"><span>${item.qty}x ${item.name}</span><span>${(item.price * item.qty).toFixed(2)} € <button onclick="window.removeFromCart(${item.id})">X</button></span></li>`;
             });
             
-            // Rabattfaktor auf Gesamtsumme anwenden
             const finalTotal = total * activeCartFactor;
-            
             let badgeHtml = '';
             if (activeCartBadge === 'Q13') badgeHtml = ' <span style="background: #f3e8ff; color: #7c3aed; padding: 2px 8px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px;">Q13</span>';
             if (activeCartBadge === 'VIP') badgeHtml = ' <span style="background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px;">VIP</span>';
             
             document.getElementById('total-price').innerHTML = finalTotal.toFixed(2) + ' €' + badgeHtml;
             
-            // Button Styles (Gedrückt / Aktiv markieren)
             btnQ13.innerText = activeCartBadge === 'Q13' ? 'Q13 (Aktiv)' : 'Q13 (Frei)';
             btnQ13.style.boxShadow = activeCartBadge === 'Q13' ? '0 0 0 3px var(--purple)' : 'none';
             btnQ13.style.opacity = (activeCartBadge === '' || activeCartBadge === 'Q13') ? '1' : '0.5';
@@ -1175,15 +1154,12 @@
             btnVip.style.opacity = (activeCartBadge === '' || activeCartBadge === 'VIP') ? '1' : '0.5';
 
             payBtn.disabled = btnQ13.disabled = btnVip.disabled = false;
-
-            // Rückgeld neu berechnen nach Faktor-Änderung
             window.calculateChange();
         }
 
         // ==========================================
         // SYSTEM & WEITERE FUNKTIONEN
         // ==========================================
-        
         window.performLogin = function() {
             const name = document.getElementById('login-name').value.trim();
             const id = document.getElementById('login-id').value.trim();
@@ -1215,6 +1191,7 @@
             window.saveDataToCloud();
 
             currentWaiter = null;
+            stockAdminUnlocked = false;
             document.getElementById('login-name').value = '';
             document.getElementById('login-id').value = '';
             document.getElementById('login-pass').value = '';
@@ -1240,14 +1217,14 @@
 
         window.setExactCash = function() {
             let total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-            total = total * activeCartFactor; // Rabattfaktor anwenden
+            total = total * activeCartFactor;
             document.getElementById('cash-given-input').value = total.toFixed(2);
             window.calculateChange();
         }
 
         window.calculateChange = function() {
             let total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-            total = total * activeCartFactor; // Rabattfaktor anwenden
+            total = total * activeCartFactor;
 
             const given = parseFloat(document.getElementById('cash-given-input').value) || 0;
             const change = given - total;
@@ -1258,7 +1235,6 @@
         }
 
         window.checkout = function() { 
-            // Nimmt nun die aktuell gesicherten Rabattfaktoren
             processCheckout(activeCartFactor, activeCartBadge); 
         }
 
@@ -1268,11 +1244,14 @@
             
             totalRevenue += total;
             
-            // Warenkorb und Badges nach Kauf leeren/zurücksetzen
             cart = [];
             activeCartBadge = '';
             activeCartFactor = 1.0;
             updateCartUI();
+
+            // Gegeben-Eingabe nach Kassieren automatisch auf 0 zurücksetzen
+            document.getElementById('cash-given-input').value = '';
+            document.getElementById('change-amount').innerText = '0,00 €';
 
             currentCartBackup.forEach(item => {
                 stockData[item.id] = Math.max(0, (stockData[item.id] || 50) - item.qty);
@@ -1295,6 +1274,7 @@
             alert(`Bezahlt! Summe: ${total.toFixed(2)} € ${badgeType ? '(' + badgeType + ')' : ''}`);
         }
 
+        // Storno für alle
         window.stornoEntry = function(entryId) {
             const entry = salesJournal.find(e => e.id === entryId);
             if (!entry || entry.storniert) return;
@@ -1311,6 +1291,19 @@
             });
             window.saveDataToCloud();
             alert("Bestellung erfolgreich storniert!");
+        }
+
+        // Kassenbucheintrag löschen (Nur für Admins)
+        window.deleteJournalEntry = function(entryId) {
+            if (!currentWaiter || !currentWaiter.isAdmin) {
+                alert("Nur Administratoren können Kassenbucheinträge löschen!");
+                return;
+            }
+            if (confirm("Möchtest du diesen Kassenbucheintrag komplett aus dem Kassenbuch löschen? (Achtung: Dies ändert den Gesamtumsatz nicht automatisch rückgängig, es entfernt nur den Log-Eintrag).")) {
+                salesJournal = salesJournal.filter(e => e.id !== entryId);
+                window.saveDataToCloud();
+                alert("Eintrag gelöscht.");
+            }
         }
 
         window.addCategory = function() {
@@ -1366,28 +1359,34 @@
                 const stock = stockData[p.id] !== undefined ? stockData[p.id] : 50;
                 const tr = document.createElement('tr');
                 if (stock < 5) tr.style.backgroundColor = '#fff5f5';
-                tr.innerHTML = `<td><strong>${p.name}</strong></td><td>${p.price.toFixed(2)} €</td><td><input type="number" class="login-input" value="${stock}" style="width:70px; padding:6px; margin:0; text-align:center;" onchange="window.updateStockWithAuth(${p.id}, this)"></td><td>${stock <= 0 ? '<span style="color: var(--danger); font-weight: bold;">🚫 Leer</span>' : (stock < 5 ? '<span style="color: var(--warning); font-weight: bold;">⚠️ < 5</span>' : '<span style="color: var(--success); font-weight: bold;">OK</span>')}</td>`;
+
+                let stockInputHtml = `<span>${stock}</span>`;
+                if (stockAdminUnlocked) {
+                    stockInputHtml = `<input type="number" class="login-input" value="${stock}" style="width:70px; padding:6px; margin:0; text-align:center;" onchange="window.updateStockValue(${p.id}, this.value)">`;
+                }
+
+                tr.innerHTML = `<td><strong>${p.name}</strong></td><td>${p.price.toFixed(2)} €</td><td>${stockInputHtml}</td><td>${stock <= 0 ? '<span style="color: var(--danger); font-weight: bold;">🚫 Leer</span>' : (stock < 5 ? '<span style="color: var(--warning); font-weight: bold;">⚠️ < 5</span>' : '<span style="color: var(--success); font-weight: bold;">OK</span>')}</td>`;
                 tbody.appendChild(tr);
             });
-        }
-
-        window.updateStockWithAuth = function(productId, inputElement) {
-            const pass = prompt("Admin-Passwort zum Ändern des Lagers:");
-            if (pass !== "2112") { alert("Falsches Passwort!"); renderStockTable(); return; }
-            const newValue = parseInt(inputElement.value) || 0;
-            stockData[productId] = newValue;
-            
-            const product = products.find(p => p.id === productId);
-            const now = new Date();
-            stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: product ? product.name : 'Unbekannt', stock: `Auf ${newValue} geändert (Admin)` });
-            window.saveDataToCloud();
         }
 
         function renderStockLog() {
             const tbody = document.getElementById('stock-log-tbody');
             tbody.innerHTML = '';
             if (stockLog.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Noch keine Einträge.</td></tr>'; return; }
-            stockLog.forEach(log => { tbody.innerHTML += `<tr><td>${log.dateTime}</td><td><strong>${log.itemName}</strong></td><td><span>${log.stock}</span></td></tr>`; });
+            stockLog.forEach((log, index) => {
+                let deleteBtn = '';
+                if (stockAdminUnlocked) {
+                    deleteBtn = ` <button class="btn btn-danger" style="padding: 2px 6px; font-size: 0.7rem; float: right;" onclick="window.deleteSingleStockLog(${index})">X</button>`;
+                }
+                tbody.innerHTML += `<tr><td>${log.dateTime}</td><td><strong>${log.itemName}</strong></td><td><span>${log.stock}</span>${deleteBtn}</td></tr>`;
+            });
+        }
+
+        window.deleteSingleStockLog = function(index) {
+            if (!stockAdminUnlocked) return;
+            stockLog.splice(index, 1);
+            window.saveDataToCloud();
         }
 
         function renderJournal() {
@@ -1408,7 +1407,13 @@
                 }
 
                 let actionBtns = '';
-                if (!e.storniert) actionBtns += `<button class="btn btn-warning" style="padding: 5px 10px; font-size: 0.8rem;" onclick="window.stornoEntry(${e.id})">Storno</button>`;
+                if (!e.storniert) {
+                    actionBtns += `<button class="btn btn-warning" style="padding: 5px 10px; font-size: 0.8rem; margin-right: 5px;" onclick="window.stornoEntry(${e.id})">Storno</button>`;
+                }
+                // Admin-Löschbutton für Kassenbucheinträge
+                if (currentWaiter && currentWaiter.isAdmin) {
+                    actionBtns += `<button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="window.deleteJournalEntry(${e.id})">Löschen</button>`;
+                }
 
                 tbody.innerHTML += `<tr style="${e.storniert ? 'opacity: 0.6; background-color: #fff1f2;' : ''}"><td>${e.time} ${badgeHtml}</td><td>${e.waiter}</td><td>${items}</td><td><strong>${e.total.toFixed(2)} €</strong></td><td>${actionBtns}</td></tr>`;
             });
@@ -1442,7 +1447,7 @@
             if (!currentWaiter.isAdmin) return;
             if (confirm("Sicher? ALLES wird gelöscht.")) {
                 totalRevenue = 0; salesJournal = []; itemCounts = {}; stockLog = []; loginLog = []; happyHourSchedules = []; isHappyHour = false; activeDiscounts = {};
-                authorizedWaiters = { "0001": { name: "Master", pass: "2112", isAdmin: true } };
+                authorizedWaiters = { "0001": { name: "Jonas(Administrator)", pass: "2112", isAdmin: true } };
                 window.saveDataToCloud();
             }
         }
