@@ -297,9 +297,8 @@
     <div id="login-overlay">
         <div class="login-box">
             <h2>Abi-Bar Login</h2>
-            <p style="font-size: 0.85rem; color: var(--text-secondary);">Bitte Name, 4-stellige ID und Passwort eingeben.</p>
-            <input type="text" id="login-name" class="login-input" placeholder="Dein Name" style="text-align: center;">
-            <input type="password" id="login-id" class="login-input" placeholder="4-stellige ID" maxlength="4" style="text-align: center;">
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Bitte ID und Passwort eingeben.</p>
+            <input type="text" id="login-id" class="login-input" placeholder="ID" style="text-align: center;">
             <input type="password" id="login-pass" class="login-input" placeholder="Passwort" style="text-align: center;">
             <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" onclick="performLogin()">Einloggen</button>
         </div>
@@ -313,7 +312,7 @@
         <div class="header-controls">
             <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="performLogout()">Abmelden</button>
             <div class="toggle-container">
-                <span id="header-hh-status" class="badge-status-inactive" style="padding: 4px 10px; border-radius: 8px; font-size: 0.8rem;">⚡ Happy Hour: Inaktiv</span>
+                <span id="header-hh-status" class="badge-status-inactive" style="padding: 4px 10px; border-radius: 8px; font-size: 0.8rem;">Happy Hour: Inaktiv</span>
             </div>
             <div class="toggle-container">
                 <span>Rückgeld</span>
@@ -472,7 +471,7 @@
             <div class="admin-sub-tabs">
                 <button class="admin-sub-btn active" onclick="switchAdminTab('products')">📦 Produkte & Kategorien</button>
                 <button class="admin-sub-btn" onclick="switchAdminTab('happyhour')">⚡ Happy Hour Management</button>
-                <button class="admin-sub-btn" onclick="switchAdminTab('waiters')">👥 Kellner & Admin-Rechte</button>
+                <button class="admin-sub-btn" onclick="switchAdminTab('waiters')">👥 Voreingestellte Accounts</button>
                 <button class="admin-sub-btn" onclick="switchAdminTab('logs')">📋 System Logs</button>
             </div>
 
@@ -607,21 +606,13 @@
                 </div>
             </div>
 
-            <!-- REITER 3: Kellner -->
+            <!-- REITER 3: Accounts -->
             <div id="admin-tab-waiters" class="admin-sub-section">
-                <h3 style="font-size: 1.05rem; margin-top: 0;">Neuen Kellner anlegen:</h3>
-                <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-                    <input type="text" id="new-waiter-name" class="login-input" placeholder="Name" style="margin:0; flex:2;">
-                    <input type="text" id="new-waiter-id" class="login-input" placeholder="4-stellige ID" maxlength="4" style="margin:0; flex:1;">
-                    <input type="password" id="new-waiter-pass" class="login-input" placeholder="Passwort" style="margin:0; flex:1;">
-                    <button class="btn btn-success" style="padding: 12px 20px;" onclick="addNewWaiter()">Kellner hinzufügen</button>
-                </div>
-
-                <h3 style="font-size: 1.05rem; margin-top: 10px;">Berechtigte Kellner & Admin-Status:</h3>
+                <h3 style="font-size: 1.05rem; margin-top: 0;">Voreingestellte Accounts (Admin & Kellner 1–10):</h3>
                 <div class="table-container" style="max-height: 300px;">
                     <table>
                         <thead>
-                            <tr><th>Name</th><th>ID</th><th>Admin-Rechte</th><th>Aktion</th></tr>
+                            <tr><th>Name / ID</th><th>Rolle</th></tr>
                         </thead>
                         <tbody id="waiters-tbody"></tbody>
                     </table>
@@ -692,9 +683,21 @@
         let stockLog = [];     
         let loginLog = [];     
         
-        let authorizedWaiters = {
-            "0001": { name: "Jonas(Administrator)", pass: "2112", isAdmin: true },
-            "0002": { name: "Julian", pass: "1234", isAdmin: false }
+        // Feste Accounts (Admins + Kellner 1 bis 10)
+        const authorizedWaiters = {
+            "Jonas(Admin)": { name: "Jonas", pass: "2027", isAdmin: true },
+            "Julian(Admin)": { name: "Julian", pass: "2027", isAdmin: true },
+            "Magdalena(Admin)": { name: "Magdalena", pass: "2027", isAdmin: true },
+            "Kellner001": { name: "Kellner 1", pass: "4821", isAdmin: false },
+            "Kellner002": { name: "Kellner 2", pass: "9356", isAdmin: false },
+            "Kellner003": { name: "Kellner 3", pass: "1472", isAdmin: false },
+            "Kellner004": { name: "Kellner 4", pass: "6839", isAdmin: false },
+            "Kellner005": { name: "Kellner 5", pass: "2904", isAdmin: false },
+            "Kellner006": { name: "Kellner 6", pass: "5183", isAdmin: false },
+            "Kellner007": { name: "Kellner 7", pass: "7460", isAdmin: false },
+            "Kellner008": { name: "Kellner 8", pass: "3215", isAdmin: false },
+            "Kellner009": { name: "Kellner 9", pass: "8942", isAdmin: false },
+            "Kellner010": { name: "Kellner 10", pass: "5671", isAdmin: false }
         };
 
         let isHappyHour = false;
@@ -724,9 +727,6 @@
                     stockLog = data.stockLog || [];
                     loginLog = data.loginLog || [];
                     
-                    if(data.authorizedWaiters) authorizedWaiters = data.authorizedWaiters;
-                    authorizedWaiters["0001"] = { name: "Jonas(Administrator)", pass: "2112", isAdmin: true };
-
                     products = data.products || products;
                     categories = data.categories || categories;
                     happyHourSchedules = data.happyHourSchedules || [];
@@ -769,7 +769,6 @@
                 stockData,
                 stockLog,
                 loginLog,
-                authorizedWaiters,
                 products,
                 categories,
                 happyHourSchedules,
@@ -864,7 +863,7 @@
                     break;
                 }
             }
-            if (pass === "2112" || matchedAdmin) {
+            if (pass === "2027" || matchedAdmin) {
                 stockAdminUnlocked = true;
                 document.getElementById('stock-unlock-btn').innerText = "🔒 Admin-Modus gesperrt";
                 document.getElementById('stock-unlock-btn').className = "btn btn-danger";
@@ -905,50 +904,17 @@
         }
 
         // ==========================================
-        // KELLNER MANAGEMENT
+        // KELLNER ANZEIGE (Feste Accounts)
         // ==========================================
-        window.addNewWaiter = function() {
-            const name = document.getElementById('new-waiter-name').value.trim();
-            const id = document.getElementById('new-waiter-id').value.trim();
-            const pass = document.getElementById('new-waiter-pass').value.trim();
-
-            if (!name || id.length !== 4 || !pass) {
-                alert("Bitte alle Felder ausfüllen (ID genau 4-stellig).");
-                return;
-            }
-
-            authorizedWaiters[id] = { name: name, pass: pass, isAdmin: false };
-            document.getElementById('new-waiter-name').value = '';
-            document.getElementById('new-waiter-id').value = '';
-            document.getElementById('new-waiter-pass').value = '';
-            renderWaitersTable(); 
-            window.saveDataToCloud(); 
-        }
-
-        window.toggleWaiterAdmin = function(id) {
-            if (id === "0001") { alert("Jonas(Administrator) hat immer Admin-Rechte."); return; }
-            authorizedWaiters[id].isAdmin = !authorizedWaiters[id].isAdmin;
-            window.saveDataToCloud();
-        }
-
-        window.removeWaiter = function(id) {
-            if (id === "0001") { alert("Jonas(Administrator) kann nicht gelöscht werden!"); return; }
-            if (confirm(`Kellner #${id} löschen?`)) {
-                delete authorizedWaiters[id];
-                window.saveDataToCloud();
-            }
-        }
-
         function renderWaitersTable() {
             const tbody = document.getElementById('waiters-tbody');
+            if (!tbody) return;
             tbody.innerHTML = '';
             for (const [id, data] of Object.entries(authorizedWaiters)) {
                 tbody.innerHTML += `
                     <tr>
-                        <td><strong>${data.name}</strong></td>
-                        <td>#${id}</td>
-                        <td><button class="btn ${data.isAdmin ? 'btn-success' : 'btn-danger'}" style="padding: 4px 10px; font-size: 0.8rem;" onclick="window.toggleWaiterAdmin('${id}')">${data.isAdmin ? 'Ja (Admin)' : 'Nein'}</button></td>
-                        <td>${id !== "0001" ? '<button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="window.removeWaiter(\'' + id + '\')">Löschen</button>' : '<span style="color: var(--accent); font-size: 0.85rem; font-weight: 600;">Admin</span>'}</td>
+                        <td><strong>${data.name}</strong> (ID: ${id})</td>
+                        <td>${data.isAdmin ? '<span style="color: var(--accent); font-weight: 600;">Administrator</span>' : '<span style="color: var(--text-secondary);">Kellner</span>'}</td>
                     </tr>`;
             }
         }
@@ -1241,22 +1207,20 @@
         }
 
         // ==========================================
-        // SYSTEM & WEITERE FUNKTIONEN
+        // SYSTEM & WEITERE FUNKTIONEN (Login nur mit ID & Passwort)
         // ==========================================
         window.performLogin = function() {
-            const name = document.getElementById('login-name').value.trim();
             const id = document.getElementById('login-id').value.trim();
             const pass = document.getElementById('login-pass').value.trim();
 
             const waiter = authorizedWaiters[id];
-            if (!waiter || waiter.name.toLowerCase() !== name.toLowerCase() || waiter.pass !== pass) {
-                alert("Fehler: Unbekannte ID, falscher Name oder falsches Passwort!");
+            if (!waiter || waiter.pass !== pass) {
+                alert("Fehler: Unbekannte ID oder falsches Passwort!");
                 return;
             }
 
-            const isAdmin = (id === "0001" || waiter.isAdmin);
-            currentWaiter = { name: waiter.name, id: id, isAdmin: isAdmin };
-            document.getElementById('current-waiter-display').innerText = `${currentWaiter.name} (#${currentWaiter.id})`;
+            currentWaiter = { name: waiter.name, id: id, isAdmin: waiter.isAdmin };
+            document.getElementById('current-waiter-display').innerText = `${currentWaiter.name} (${currentWaiter.id})`;
             document.getElementById('login-overlay').style.display = 'none';
 
             if (currentWaiter.isAdmin) {
@@ -1278,7 +1242,6 @@
 
             currentWaiter = null;
             stockAdminUnlocked = false;
-            document.getElementById('login-name').value = '';
             document.getElementById('login-id').value = '';
             document.getElementById('login-pass').value = '';
             document.getElementById('login-overlay').style.display = 'flex';
@@ -1347,7 +1310,7 @@
             salesJournal.unshift({
                 id: Date.now(),
                 time: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(),
-                waiter: currentWaiter ? `${currentWaiter.name} (#${currentWaiter.id})` : 'Unbekannt',
+                waiter: currentWaiter ? `${currentWaiter.name} (${currentWaiter.id})` : 'Unbekannt',
                 items: currentCartBackup,
                 total,
                 badge: badgeType,
@@ -1539,7 +1502,6 @@
             if (!currentWaiter.isAdmin) return;
             if (confirm("Sicher? ALLES wird gelöscht.")) {
                 totalRevenue = 0; salesJournal = []; itemCounts = {}; stockLog = []; loginLog = []; happyHourSchedules = []; isHappyHour = false; activeDiscounts = {}; individualDiscountsValues = {};
-                authorizedWaiters = { "0001": { name: "Jonas(Administrator)", pass: "2112", isAdmin: true } };
                 window.saveDataToCloud();
             }
         }
@@ -1547,4 +1509,4 @@
         initApp();
     </script>
 </body>
-</html>>
+</html>
