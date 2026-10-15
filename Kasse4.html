@@ -148,6 +148,30 @@
             color: var(--text-secondary);
         }
 
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #d1d1d6; transition: .3s; border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px;
+            background-color: white; transition: .3s; border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider.happy-hour-slider { background-color: var(--warning); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
         .view-section { display: none; flex: 1; overflow: hidden; flex-direction: column; }
         .view-section.active { display: flex; }
 
@@ -454,6 +478,19 @@
 
             <!-- REITER 1: Produkte -->
             <div id="admin-tab-products" class="admin-sub-section active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1rem;">Kasse für alle Kellner freigeben / sperren:</h3>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span id="kasse-status-label" style="font-size: 0.85rem; font-weight: bold; color: var(--success);">Aktiv</span>
+                        <label class="switch">
+                            <input type="checkbox" id="kasse-active-toggle" onchange="toggleKasseActive(this.checked)" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
                 <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
                     <input type="text" id="new-cat-name" class="login-input" placeholder="Neue Kategorie (z.B. Shots)" style="margin:0; flex:2;">
                     <button class="btn btn-success" style="padding: 12px 20px;" onclick="addCategory()">Kategorie hinzufügen</button>
@@ -470,8 +507,14 @@
             <div id="admin-tab-happyhour" class="admin-sub-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <h3 style="margin: 0; font-size: 1.1rem;">Live Status:</h3>
-                        <span id="hh-status-badge" class="badge-status-inactive">Inaktiv</span>
+                        <h3 style="margin: 0; font-size: 1.1rem;">Happy Hour Hauptschalter:</h3>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span id="hh-status-label" style="font-size: 0.85rem; font-weight: bold; color: var(--danger);">Inaktiv</span>
+                        <label class="switch">
+                            <input type="checkbox" id="happy-hour-main-toggle" onchange="toggleGlobalHappyHour(this.checked)">
+                            <span class="slider happy-hour-slider"></span>
+                        </label>
                     </div>
                 </div>
 
@@ -509,8 +552,8 @@
                         </div>
 
                         <div style="display: flex; gap: 10px;">
-                            <button class="btn btn-warning" onclick="startManualHH()">JETZT STARTEN</button>
-                            <button class="btn btn-danger" onclick="stopHH()">BEENDEN</button>
+                            <button class="btn btn-warning" onclick="startManualHH()">WERTE SPEICHERN & STARTEN</button>
+                            <button class="btn btn-danger" onclick="stopHH()">RESET / BEENDEN</button>
                         </div>
                     </div>
                 </div>
@@ -657,6 +700,8 @@
         let isHappyHour = false;
         let activeDiscounts = {}; 
         let happyHourSchedules = [];
+        let individualDiscountsValues = {};
+        let kasseActive = true;
         
         let activeCartBadge = '';
         let activeCartFactor = 1.0;
@@ -680,8 +725,6 @@
                     loginLog = data.loginLog || [];
                     
                     if(data.authorizedWaiters) authorizedWaiters = data.authorizedWaiters;
-                    
-                    // Jonas (Administrator) immer absichern
                     authorizedWaiters["0001"] = { name: "Jonas(Administrator)", pass: "2112", isAdmin: true };
 
                     products = data.products || products;
@@ -690,11 +733,15 @@
                     
                     isHappyHour = data.isHappyHour || false;
                     activeDiscounts = data.activeDiscounts || {};
+                    individualDiscountsValues = data.individualDiscountsValues || {};
+                    kasseActive = data.kasseActive !== undefined ? data.kasseActive : true;
 
                     document.getElementById('total-revenue').innerText = totalRevenue.toFixed(2) + ' €';
+                    document.getElementById('happy-hour-main-toggle').checked = isHappyHour;
+                    document.getElementById('kasse-active-toggle').checked = kasseActive;
                     updateHappyHourHeaderStatus();
+                    updateKasseActiveStatusLabel();
 
-                    updateStatusBadge();
                     renderPosGrid();
                     renderStockTable();
                     renderStockLog();
@@ -727,7 +774,9 @@
                 categories,
                 happyHourSchedules,
                 isHappyHour,
-                activeDiscounts
+                activeDiscounts,
+                individualDiscountsValues,
+                kasseActive
             });
         }
 
@@ -771,13 +820,36 @@
 
         function updateHappyHourHeaderStatus() {
             const statusEl = document.getElementById('header-hh-status');
+            const statusLabel = document.getElementById('hh-status-label');
             if (isHappyHour) {
                 statusEl.innerText = "⚡ Happy Hour: Aktiv";
                 statusEl.className = "badge-status-active";
+                if(statusLabel) { statusLabel.innerText = "Aktiv"; statusLabel.style.color = "var(--success)"; }
             } else {
                 statusEl.innerText = "⚡ Happy Hour: Inaktiv";
                 statusEl.className = "badge-status-inactive";
+                if(statusLabel) { statusLabel.innerText = "Inaktiv"; statusLabel.style.color = "var(--danger)"; }
             }
+        }
+
+        function updateKasseActiveStatusLabel() {
+            const label = document.getElementById('kasse-status-label');
+            if (label) {
+                if (kasseActive) {
+                    label.innerText = "Aktiv";
+                    label.style.color = "var(--success)";
+                } else {
+                    label.innerText = "Gesperrt";
+                    label.style.color = "var(--danger)";
+                }
+            }
+        }
+
+        window.toggleKasseActive = function(checked) {
+            kasseActive = checked;
+            updateKasseActiveStatusLabel();
+            window.saveDataToCloud();
+            renderPosGrid();
         }
 
         // ==========================================
@@ -785,7 +857,6 @@
         // ==========================================
         window.unlockStockAdminMode = function() {
             const pass = prompt("Bitte Admin-Passwort eingeben:");
-            // Prüfen ob das Passwort mit einem Admin übereinstimmt
             let matchedAdmin = false;
             for (const [id, w] of Object.entries(authorizedWaiters)) {
                 if (w.isAdmin && w.pass === pass) {
@@ -885,16 +956,15 @@
         // ==========================================
         // HAPPY HOUR LOGIK
         // ==========================================
-        function updateStatusBadge() {
-            const badge = document.getElementById('hh-status-badge');
-            if(isHappyHour) {
-                badge.innerText = "Läuft aktuell!";
-                badge.className = "badge-status-active";
-            } else {
-                badge.innerText = "Inaktiv";
-                badge.className = "badge-status-inactive";
+        window.toggleGlobalHappyHour = function(checked) {
+            isHappyHour = checked;
+            if (checked && Object.keys(activeDiscounts).length === 0) {
+                products.forEach(p => activeDiscounts[p.id] = 1.00);
             }
+            window.saveDataToCloud();
             updateHappyHourHeaderStatus();
+            updateCartUI();
+            renderPosGrid();
         }
 
         window.updateManualUI = function() {
@@ -907,12 +977,13 @@
             const tbody = document.getElementById('manual-hh-products');
             tbody.innerHTML = '';
             products.forEach(p => {
+                const savedVal = individualDiscountsValues[p.id] !== undefined ? individualDiscountsValues[p.id] : 1.00;
                 tbody.innerHTML += `
                     <tr>
                         <td><input type="checkbox" class="manual-cb" value="${p.id}" checked style="width:18px; height:18px; cursor:pointer;"></td>
                         <td><strong>${p.name}</strong></td>
                         <td>${p.price.toFixed(2)} €</td>
-                        <td><input type="number" class="manual-ind-input login-input" data-id="${p.id}" value="1.00" step="0.5" min="0.1" style="width: 80px; padding: 6px; margin: 0;" disabled></td>
+                        <td><input type="number" class="manual-ind-input login-input" data-id="${p.id}" value="${savedVal}" step="0.5" min="0.1" style="width: 80px; padding: 6px; margin: 0;" disabled></td>
                     </tr>
                 `;
             });
@@ -922,27 +993,37 @@
             const isGlobal = document.querySelector('input[name="manual_hh_mode"]:checked').value === 'global';
             const globalDisc = parseFloat(document.getElementById('manual-global-discount').value) || 0;
             activeDiscounts = {};
+            individualDiscountsValues = {};
 
             document.querySelectorAll('.manual-cb:checked').forEach(cb => {
                 const id = parseInt(cb.value);
-                if (isGlobal) activeDiscounts[id] = globalDisc;
-                else {
+                if (isGlobal) {
+                    activeDiscounts[id] = globalDisc;
+                } else {
                     const indInput = document.querySelector(`.manual-ind-input[data-id="${id}"]`);
-                    activeDiscounts[id] = parseFloat(indInput.value) || 0;
+                    const val = parseFloat(indInput.value) || 0;
+                    activeDiscounts[id] = val;
+                    individualDiscountsValues[id] = val;
                 }
             });
 
             if(Object.keys(activeDiscounts).length === 0) { alert("Du musst mindestens ein Produkt auswählen!"); return; }
             isHappyHour = true;
+            document.getElementById('happy-hour-main-toggle').checked = true;
             window.saveDataToCloud();
-            alert("Manuelle Happy Hour erfolgreich gestartet!");
+            updateHappyHourHeaderStatus();
+            alert("Happy Hour Werte gespeichert und aktiv geschaltet!");
         }
 
         window.stopHH = function() {
             isHappyHour = false;
             activeDiscounts = {};
+            individualDiscountsValues = {};
+            document.getElementById('happy-hour-main-toggle').checked = false;
             window.saveDataToCloud();
-            alert("Happy Hour beendet.");
+            updateHappyHourHeaderStatus();
+            renderManualHHProducts();
+            alert("Happy Hour zurückgesetzt und beendet.");
         }
 
         window.updateSchedUI = function() {
@@ -1051,11 +1132,11 @@
 
                     const btn = document.createElement('div');
                     let btnClass = 'product-btn';
-                    if (isSoldOut) btnClass += ' sold-out';
+                    if (isSoldOut || !kasseActive) btnClass += ' sold-out';
                     else if (isLow) btnClass += ' low-stock';
 
                     btn.className = btnClass;
-                    if (!isSoldOut) btn.onclick = () => window.addToCart(p.id);
+                    if (!isSoldOut && kasseActive) btn.onclick = () => window.addToCart(p.id);
                     
                     let priceHtml = `<span class="product-price">${effectivePrice.toFixed(2)} €</span>`;
                     if (isDiscounted) {
@@ -1063,7 +1144,8 @@
                     }
 
                     let stockText = `Lager: ${stock}`;
-                    if (isSoldOut) stockText = `AUSVERKAUFT`;
+                    if (!kasseActive) stockText = `GESPERRT`;
+                    else if (isSoldOut) stockText = `AUSVERKAUFT`;
                     else if (isLow) stockText = `Lager: ${stock} ⚠️`;
 
                     btn.innerHTML = `<span class="product-name">${p.name}</span>${priceHtml}<span class="product-stock-tag">${stockText}</span>`;
@@ -1082,6 +1164,7 @@
         }
 
         window.addToCart = function(productId) {
+            if (!kasseActive) return;
             const product = products.find(p => p.id === productId);
             const effectivePrice = getEffectivePrice(product);
             const currentStock = stockData[productId] !== undefined ? stockData[productId] : 50;
@@ -1176,8 +1259,11 @@
             document.getElementById('current-waiter-display').innerText = `${currentWaiter.name} (#${currentWaiter.id})`;
             document.getElementById('login-overlay').style.display = 'none';
 
-            if (currentWaiter.isAdmin) document.getElementById('admin-tab-btn').style.display = 'block';
-            else document.getElementById('admin-tab-btn').style.display = 'none';
+            if (currentWaiter.isAdmin) {
+                document.getElementById('admin-tab-btn').style.display = 'block';
+            } else {
+                document.getElementById('admin-tab-btn').style.display = 'none';
+            }
 
             const now = new Date();
             loginLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Angemeldet' });
@@ -1249,7 +1335,6 @@
             activeCartFactor = 1.0;
             updateCartUI();
 
-            // Gegeben-Eingabe nach Kassieren automatisch auf 0 zurücksetzen
             document.getElementById('cash-given-input').value = '';
             document.getElementById('change-amount').innerText = '0,00 €';
 
@@ -1274,7 +1359,6 @@
             alert(`Bezahlt! Summe: ${total.toFixed(2)} € ${badgeType ? '(' + badgeType + ')' : ''}`);
         }
 
-        // Storno für alle
         window.stornoEntry = function(entryId) {
             const entry = salesJournal.find(e => e.id === entryId);
             if (!entry || entry.storniert) return;
@@ -1293,16 +1377,25 @@
             alert("Bestellung erfolgreich storniert!");
         }
 
-        // Kassenbucheintrag löschen (Nur für Admins)
         window.deleteJournalEntry = function(entryId) {
             if (!currentWaiter || !currentWaiter.isAdmin) {
                 alert("Nur Administratoren können Kassenbucheinträge löschen!");
                 return;
             }
-            if (confirm("Möchtest du diesen Kassenbucheintrag komplett aus dem Kassenbuch löschen? (Achtung: Dies ändert den Gesamtumsatz nicht automatisch rückgängig, es entfernt nur den Log-Eintrag).")) {
+            const entry = salesJournal.find(e => e.id === entryId);
+            if (!entry) return;
+
+            if (confirm("Möchtest du diesen Kassenbucheintrag komplett löschen? (Der Betrag wird vom Umsatz abgezogen und die Artikel wandern ins Lager zurück).")) {
+                if (!entry.storniert) {
+                    totalRevenue = Math.max(0, totalRevenue - entry.total);
+                    entry.items.forEach(item => {
+                        stockData[item.id] = (stockData[item.id] || 50) + item.qty;
+                        itemCounts[item.name] = Math.max(0, (itemCounts[item.name] || 0) - item.qty);
+                    });
+                }
                 salesJournal = salesJournal.filter(e => e.id !== entryId);
                 window.saveDataToCloud();
-                alert("Eintrag gelöscht.");
+                alert("Kassenbucheintrag gelöscht, Umsatz angepasst und Lager aktualisiert.");
             }
         }
 
@@ -1410,7 +1503,6 @@
                 if (!e.storniert) {
                     actionBtns += `<button class="btn btn-warning" style="padding: 5px 10px; font-size: 0.8rem; margin-right: 5px;" onclick="window.stornoEntry(${e.id})">Storno</button>`;
                 }
-                // Admin-Löschbutton für Kassenbucheinträge
                 if (currentWaiter && currentWaiter.isAdmin) {
                     actionBtns += `<button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="window.deleteJournalEntry(${e.id})">Löschen</button>`;
                 }
@@ -1446,7 +1538,7 @@
         window.resetData = function() {
             if (!currentWaiter.isAdmin) return;
             if (confirm("Sicher? ALLES wird gelöscht.")) {
-                totalRevenue = 0; salesJournal = []; itemCounts = {}; stockLog = []; loginLog = []; happyHourSchedules = []; isHappyHour = false; activeDiscounts = {};
+                totalRevenue = 0; salesJournal = []; itemCounts = {}; stockLog = []; loginLog = []; happyHourSchedules = []; isHappyHour = false; activeDiscounts = {}; individualDiscountsValues = {};
                 authorizedWaiters = { "0001": { name: "Jonas(Administrator)", pass: "2112", isAdmin: true } };
                 window.saveDataToCloud();
             }
@@ -1455,4 +1547,4 @@
         initApp();
     </script>
 </body>
-</html>
+</html>>
