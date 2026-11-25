@@ -311,12 +311,8 @@
             user-select: none;
             transition: transform 0.18s ease;
         }
-        .ios-app-tile:hover {
-            transform: scale(1.05);
-        }
-        .ios-app-tile:active {
-            transform: scale(0.95);
-        }
+        .ios-app-tile:hover { transform: scale(1.05); }
+        .ios-app-tile:active { transform: scale(0.95); }
         .ios-app-icon {
             width: 74px;
             height: 74px;
@@ -343,9 +339,7 @@
             overflow-y: auto;
             padding-right: 5px;
         }
-        .admin-app-view.active {
-            display: flex;
-        }
+        .admin-app-view.active { display: flex; }
         .admin-app-topbar {
             display: flex;
             align-items: center;
@@ -367,9 +361,7 @@
             align-items: center;
             gap: 5px;
         }
-        .ios-back-btn:hover {
-            background: #e3e3e8;
-        }
+        .ios-back-btn:hover { background: #e3e3e8; }
 
         .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; overflow-y: auto; max-height: 520px; padding: 12px; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 14px; margin-bottom: 15px; }
         .admin-product-card { background: #ffffff; border: 1px solid #d1d1d6; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.04); }
@@ -439,21 +431,10 @@
             line-height: 1.45;
             box-shadow: 0 4px 16px rgba(0,0,0,0.05);
         }
-        .receipt-paper h4 {
-            margin: 0 0 4px 0;
-            font-size: 1.05rem;
-            text-align: center;
-        }
+        .receipt-paper h4 { margin: 0 0 4px 0; font-size: 1.05rem; text-align: center; }
         .receipt-center { text-align: center; }
-        .receipt-divider {
-            border-top: 1px dashed #86868b;
-            margin: 10px 0;
-        }
-        .receipt-line {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-        }
+        .receipt-divider { border-top: 1px dashed #86868b; margin: 10px 0; }
+        .receipt-line { display: flex; justify-content: space-between; gap: 10px; }
 
         /* Standalone Kunden-Belegansicht (via QR-Code Scan) */
         #public-receipt-view {
@@ -468,11 +449,9 @@
             justify-content: center;
             align-items: flex-start;
         }
-        #public-receipt-view.active {
-            display: flex;
-        }
+        #public-receipt-view.active { display: flex; }
 
-        footer { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary); }
+        footer { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary); flex-wrap: wrap; gap: 8px; }
 
         @media print {
             body * { visibility: hidden; }
@@ -676,16 +655,21 @@
     <div id="view-admin" class="view-section">
         <div class="section" style="flex: 1; overflow-y: auto;">
             
-            <!-- ADMIN STARTSEITE (App-Übersicht + Cloud-Speicherknopf) -->
+            <!-- ADMIN STARTSEITE -->
             <div id="admin-apps-home" style="display: flex; flex-direction: column; flex: 1;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #f0f0f2; padding-bottom: 14px; margin-bottom: 10px;">
                     <div>
                         <h2 style="margin: 0; font-size: 1.25rem;">🔒 Admin-Zentrale</h2>
                         <span id="cloud-sync-status-text" style="font-size: 0.8rem; color: var(--text-secondary);">Verbinde mit Cloud...</span>
                     </div>
-                    <button class="btn btn-success" style="padding: 12px 20px; font-size: 0.95rem; box-shadow: 0 4px 14px rgba(52,199,89,0.3);" onclick="manualCloudSaveAll()">
-                        💾 Alle Daten in Cloud speichern
-                    </button>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" style="padding: 12px 16px; font-size: 0.9rem;" onclick="forceCloudRefresh()">
+                            🔄 Jetzt abrufen
+                        </button>
+                        <button class="btn btn-success" style="padding: 12px 20px; font-size: 0.95rem; box-shadow: 0 4px 14px rgba(52,199,89,0.3);" onclick="manualCloudSaveAll()">
+                            💾 Alle Daten in Cloud speichern
+                        </button>
+                    </div>
                 </div>
 
                 <div class="ios-app-grid">
@@ -1087,7 +1071,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeFirestore, doc, getDoc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDSZ2r9G9328WMfL_KFZr0JqvrEVGmpdxo",
@@ -1099,7 +1083,10 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        // HTTP Long-Polling erzwingen, damit Safari, iPhone und iCloud Private Relay Live-Updates nicht blockieren
+        const db = initializeFirestore(app, {
+            experimentalForceLongPolling: true
+        });
         const kasseDocRef = doc(db, "kasse", "data");
 
         const defaultCategories = ["Getränke", "Alkoholfrei", "Essen & Snacks"];
@@ -1146,6 +1133,8 @@
         let happyHourSchedules = [];
         let individualDiscountsValues = {};
         let kasseActive = true;
+        let lastUpdatedAt = "";
+        let lastUpdatedBy = "";
 
         // Rein lokale Geräte-Daten (NICHT synchronisiert)
         let cart = [];
@@ -1155,8 +1144,9 @@
         let stockAdminUnlocked = false;
         let currentViewedReceiptOrder = null;
 
-        // Sync-Status & Sperre gegen Überschreiben mit Defaults vor erstem Laden
+        // Sync-Status & Schreibschutz
         let hasLoadedFromCloud = false;
+        let isWritingToCloud = false;
         let productSaveTimer = null;
 
         // Feste Accounts (Admins + Kellner 1 bis 10)
@@ -1249,6 +1239,8 @@
             activeDiscounts = data.activeDiscounts || {};
             individualDiscountsValues = data.individualDiscountsValues || {};
             kasseActive = data.kasseActive !== undefined ? data.kasseActive : true;
+            lastUpdatedAt = data.lastUpdatedAt || "";
+            lastUpdatedBy = data.lastUpdatedBy || "";
 
             document.getElementById('total-revenue').innerText = totalRevenue.toFixed(2) + ' €';
             document.getElementById('happy-hour-main-toggle').checked = isHappyHour;
@@ -1263,7 +1255,7 @@
             updateKasseActiveStatusLabel();
             populateCompanySettingsForm();
 
-            // Alle Ansichten live aktualisieren (Warenkorb bleibt dabei lokal erhalten)
+            // Alle Ansichten live aktualisieren (lokaler Warenkorb bleibt unberührt)
             renderPosGrid();
             renderStockTable();
             renderStockLog();
@@ -1278,6 +1270,11 @@
             renderSchedulesList();
             renderManualStockModalContent();
             updateCartUI();
+
+            const stampInfo = lastUpdatedAt
+                ? `Letzter Cloud-Stand: ${lastUpdatedAt} Uhr${lastUpdatedBy ? ' (' + lastUpdatedBy + ')' : ''}`
+                : 'Cloud-Sync aktiv (noch keine Änderungen gespeichert)';
+            setSyncStatus(stampInfo, false);
         }
 
         function setSyncStatus(message, isError = false) {
@@ -1294,6 +1291,20 @@
             }
         }
 
+        window.forceCloudRefresh = async function() {
+            if (isWritingToCloud) return;
+            try {
+                const snap = await getDoc(kasseDocRef);
+                if (snap.exists()) {
+                    applyCloudSnapshotData(snap.data());
+                    hasLoadedFromCloud = true;
+                }
+            } catch (err) {
+                console.error("Abruf-Fehler:", err);
+                setSyncStatus("Cloud-Verbindungsfehler: " + err.message, true);
+            }
+        }
+
         async function initApp() {
             if (checkPublicReceiptMode()) return;
 
@@ -1301,69 +1312,71 @@
                 if (stockData[p.id] === undefined) stockData[p.id] = 50; 
             });
 
-            // 1. Erst einmalig den aktuellen Stand laden, damit Defaults niemals die Cloud überschreiben
-            try {
-                const initialSnap = await getDoc(kasseDocRef);
-                if (initialSnap.exists()) {
-                    applyCloudSnapshotData(initialSnap.data());
-                    hasLoadedFromCloud = true;
-                    setSyncStatus(`Cloud-Sync aktiv (Stand: ${new Date().toLocaleTimeString()} Uhr)`);
-                } else {
-                    hasLoadedFromCloud = true;
-                    await window.manualCloudSaveAll(true);
-                }
-            } catch (e) {
-                console.warn("Initialer getDoc-Abruf wartet auf onSnapshot:", e);
-            }
+            // 1. Sofort einmal den Server-Stand abrufen
+            await window.forceCloudRefresh();
 
-            // 2. Echtzeit-Listener für alle Änderungen anderer Nutzer (auch ohne Login aktiv)
+            // 2. Echtzeit-Listener über HTTP Long-Polling
             onSnapshot(kasseDocRef, (docSnap) => {
-                if (docSnap.exists()) {
+                if (docSnap.exists() && !isWritingToCloud) {
                     applyCloudSnapshotData(docSnap.data());
                     hasLoadedFromCloud = true;
-                    const sourceLabel = docSnap.metadata.fromCache ? "Zwischenspeicher" : "Live";
-                    setSyncStatus(`Cloud-Sync: ${sourceLabel} (${new Date().toLocaleTimeString()} Uhr)`);
-                } else if (!hasLoadedFromCloud) {
-                    hasLoadedFromCloud = true;
-                    window.manualCloudSaveAll(true);
                 }
             }, (error) => {
                 console.error("Firebase Sync Fehler:", error);
                 setSyncStatus("Cloud-Verbindungsfehler: " + error.message, true);
             });
 
+            // 3. Zusätzlicher 4-Sekunden-Fallback-Sync für iPhone/Safari
+            setInterval(() => {
+                if (!document.hidden && !isWritingToCloud) {
+                    window.forceCloudRefresh();
+                }
+            }, 4000);
+
             updateClock();
             setInterval(updateClock, 1000);
         }
 
-        // Gezieltes Speichern einzelner Bereiche per { merge: true }, damit nichts anderes überschrieben wird
+        // Gezieltes Speichern einzelner Bereiche mit gemeinsamem Server-Zeitstempel
         window.savePartialToCloud = async function(partialData) {
             if (!hasLoadedFromCloud) {
-                try {
-                    const snap = await getDoc(kasseDocRef);
-                    if (snap.exists()) {
-                        applyCloudSnapshotData(snap.data());
-                    }
-                    hasLoadedFromCloud = true;
-                } catch (e) {
-                    alert("Cloud wird noch geladen. Bitte in 2 Sekunden erneut versuchen.");
+                await window.forceCloudRefresh();
+                if (!hasLoadedFromCloud) {
+                    alert("Keine Verbindung zur Cloud möglich. Bitte Internetverbindung und Firebase-Regeln prüfen.");
                     return;
                 }
             }
 
-            const cleanPartial = JSON.parse(JSON.stringify(partialData));
+            isWritingToCloud = true;
+            const nowTime = new Date().toLocaleTimeString('de-DE');
+            const actorName = currentWaiter ? currentWaiter.name : 'System';
+
+            const cleanPartial = JSON.parse(JSON.stringify({
+                ...partialData,
+                lastUpdatedAt: nowTime,
+                lastUpdatedBy: actorName
+            }));
+
             try {
                 await setDoc(kasseDocRef, cleanPartial, { merge: true });
-                setSyncStatus(`Gespeichert: ${new Date().toLocaleTimeString()} Uhr`);
+                lastUpdatedAt = nowTime;
+                lastUpdatedBy = actorName;
+                setSyncStatus(`Letzter Cloud-Stand: ${nowTime} Uhr (${actorName})`, false);
             } catch (err) {
                 console.error("Firebase Speicherfehler:", err);
                 setSyncStatus("Speicherfehler: " + err.message, true);
                 alert("Fehler beim Speichern in der Cloud: " + err.message);
+            } finally {
+                isWritingToCloud = false;
             }
         }
 
-        // Komplettspeicherung (z. B. über den großen Speicherknopf im Adminbereich)
+        // Komplettspeicherung (alle Daten außer lokalen Warenkörben)
         window.manualCloudSaveAll = async function(silent = false) {
+            isWritingToCloud = true;
+            const nowTime = new Date().toLocaleTimeString('de-DE');
+            const actorName = currentWaiter ? currentWaiter.name : 'System';
+
             const fullGlobalPayload = {
                 totalRevenue,
                 salesJournal,
@@ -1380,13 +1393,17 @@
                 isHappyHour,
                 activeDiscounts,
                 individualDiscountsValues,
-                kasseActive
+                kasseActive,
+                lastUpdatedAt: nowTime,
+                lastUpdatedBy: actorName
             };
             const cleanPayload = JSON.parse(JSON.stringify(fullGlobalPayload));
             try {
                 await setDoc(kasseDocRef, cleanPayload, { merge: true });
                 hasLoadedFromCloud = true;
-                setSyncStatus(`Alle Daten gespeichert: ${new Date().toLocaleTimeString()} Uhr`);
+                lastUpdatedAt = nowTime;
+                lastUpdatedBy = actorName;
+                setSyncStatus(`Letzter Cloud-Stand: ${nowTime} Uhr (${actorName})`, false);
                 if (!silent) {
                     alert("Alle Kassendaten (außer lokale Warenkörbe) wurden erfolgreich in der Cloud gespeichert!");
                 }
@@ -1396,6 +1413,8 @@
                 if (!silent) {
                     alert("Fehler beim Speichern in der Cloud: " + err.message);
                 }
+            } finally {
+                isWritingToCloud = false;
             }
         }
 
@@ -1489,7 +1508,7 @@
         }
 
         // ==========================================
-        // MANUELLER LAGER-ABZUG & RÜCKGÄNGIG FÜR KELLNER (ATOMARE TRANSAKTION)
+        // MANUELLER LAGER-ABZUG & RÜCKGÄNGIG FÜR KELLNER
         // ==========================================
         window.openManualStockModal = function() {
             renderManualStockModalContent();
@@ -1544,10 +1563,11 @@
             const inputEl = document.getElementById(`manual-deduct-qty-${productId}`);
             const amount = parseInt(inputEl ? inputEl.value : 1) || 0;
             if (amount <= 0) {
-                alert("Es kann nur eine Menge ab 1 abgezogen werden (nur weniger, nicht mehr).");
+                alert("Es kann nur eine Menge ab 1 abgezogen werden.");
                 return;
             }
 
+            isWritingToCloud = true;
             try {
                 await runTransaction(db, async (transaction) => {
                     const snap = await transaction.get(kasseDocRef);
@@ -1570,7 +1590,7 @@
                     liveStock[productId] = currentStock - amount;
                     const now = new Date();
                     const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
-                    const timeStr = now.toLocaleTimeString();
+                    const timeStr = now.toLocaleTimeString('de-DE');
 
                     liveHistory.unshift({
                         id: Date.now(),
@@ -1582,7 +1602,7 @@
                     });
 
                     liveStockLog.unshift({
-                        dateTime: now.toLocaleDateString() + ' um ' + timeStr,
+                        dateTime: now.toLocaleDateString('de-DE') + ' um ' + timeStr,
                         itemName: product.name,
                         stock: `-${amount} Stück (Manuell durch ${waiterLabel}, neu: ${liveStock[productId]})`
                     });
@@ -1590,15 +1610,21 @@
                     transaction.set(kasseDocRef, {
                         stockData: liveStock,
                         stockLog: liveStockLog,
-                        manualStockHistory: liveHistory
+                        manualStockHistory: liveHistory,
+                        lastUpdatedAt: timeStr,
+                        lastUpdatedBy: waiterLabel
                     }, { merge: true });
                 });
             } catch (err) {
                 alert(err.message || "Fehler beim Lagerabzug.");
+            } finally {
+                isWritingToCloud = false;
+                await window.forceCloudRefresh();
             }
         }
 
         window.undoLastManualStock = async function() {
+            isWritingToCloud = true;
             try {
                 await runTransaction(db, async (transaction) => {
                     const snap = await transaction.get(kasseDocRef);
@@ -1625,8 +1651,9 @@
 
                     const now = new Date();
                     const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
+                    const timeStr = now.toLocaleTimeString('de-DE');
                     liveStockLog.unshift({
-                        dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(),
+                        dateTime: now.toLocaleDateString('de-DE') + ' um ' + timeStr,
                         itemName: product.name,
                         stock: `+${entry.amount} Stück (Rückgängig durch ${waiterLabel}, neu: ${liveStock[entry.productId]})`
                     });
@@ -1634,16 +1661,21 @@
                     transaction.set(kasseDocRef, {
                         stockData: liveStock,
                         stockLog: liveStockLog,
-                        manualStockHistory: liveHistory
+                        manualStockHistory: liveHistory,
+                        lastUpdatedAt: timeStr,
+                        lastUpdatedBy: waiterLabel
                     }, { merge: true });
                 });
             } catch (err) {
                 alert(err.message || "Fehler beim Rückgängigmachen.");
+            } finally {
+                isWritingToCloud = false;
+                await window.forceCloudRefresh();
             }
         }
 
         // ==========================================
-        // LAGER ADMIN MODUS (IM ADMINBEREICH)
+        // LAGER ADMIN MODUS
         // ==========================================
         window.unlockStockAdminMode = function() {
             const pass = prompt("Bitte Admin-Passwort eingeben:");
@@ -1685,7 +1717,7 @@
             const product = products.find(p => p.id === productId);
             const now = new Date();
             const actor = currentWaiter ? currentWaiter.name : 'Admin';
-            stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: product ? product.name : 'Unbekannt', stock: `Auf ${newVal} geändert durch ${actor}` });
+            stockLog.unshift({ dateTime: now.toLocaleDateString('de-DE') + ' um ' + now.toLocaleTimeString('de-DE'), itemName: product ? product.name : 'Unbekannt', stock: `Auf ${newVal} geändert durch ${actor}` });
             window.savePartialToCloud({ stockData, stockLog });
         }
 
@@ -2490,15 +2522,8 @@
                 return;
             }
 
-            // Sicherstellen, dass Cloud-Daten geladen sind, bevor irgendwas geschrieben wird
             if (!hasLoadedFromCloud) {
-                try {
-                    const snap = await getDoc(kasseDocRef);
-                    if (snap.exists()) {
-                        applyCloudSnapshotData(snap.data());
-                    }
-                    hasLoadedFromCloud = true;
-                } catch (e) {}
+                await window.forceCloudRefresh();
             }
 
             currentWaiter = { name: waiter.name, id: id, isAdmin: waiter.isAdmin };
@@ -2513,24 +2538,36 @@
             }
 
             const now = new Date();
-            const logEntry = { dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Angemeldet' };
+            const timeStr = now.toLocaleTimeString('de-DE');
+            const logEntry = { dateTime: now.toLocaleDateString('de-DE') + ' um ' + timeStr, name: currentWaiter.name, id: currentWaiter.id, action: 'Angemeldet' };
+            
+            isWritingToCloud = true;
             try {
                 await runTransaction(db, async (transaction) => {
                     const snap = await transaction.get(kasseDocRef);
                     const data = snap.exists() ? snap.data() : {};
                     const liveLogs = Array.isArray(data.loginLog) ? data.loginLog : [];
                     liveLogs.unshift(logEntry);
-                    transaction.set(kasseDocRef, { loginLog: liveLogs }, { merge: true });
+                    transaction.set(kasseDocRef, {
+                        loginLog: liveLogs,
+                        lastUpdatedAt: timeStr,
+                        lastUpdatedBy: currentWaiter.name
+                    }, { merge: true });
                 });
             } catch (e) {
                 console.warn("Login-Log konnte nicht geschrieben werden:", e);
+            } finally {
+                isWritingToCloud = false;
+                await window.forceCloudRefresh();
             }
         }
 
         window.performLogout = async function() {
             if (!currentWaiter) return;
             const now = new Date();
-            const logEntry = { dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Abgemeldet' };
+            const timeStr = now.toLocaleTimeString('de-DE');
+            const actorName = currentWaiter.name;
+            const logEntry = { dateTime: now.toLocaleDateString('de-DE') + ' um ' + timeStr, name: actorName, id: currentWaiter.id, action: 'Abgemeldet' };
 
             currentWaiter = null;
             stockAdminUnlocked = false;
@@ -2538,20 +2575,29 @@
             document.getElementById('login-pass').value = '';
             document.getElementById('login-overlay').style.display = 'flex';
 
+            isWritingToCloud = true;
             try {
                 await runTransaction(db, async (transaction) => {
                     const snap = await transaction.get(kasseDocRef);
                     const data = snap.exists() ? snap.data() : {};
                     const liveLogs = Array.isArray(data.loginLog) ? data.loginLog : [];
                     liveLogs.unshift(logEntry);
-                    transaction.set(kasseDocRef, { loginLog: liveLogs }, { merge: true });
+                    transaction.set(kasseDocRef, {
+                        loginLog: liveLogs,
+                        lastUpdatedAt: timeStr,
+                        lastUpdatedBy: actorName
+                    }, { merge: true });
                 });
-            } catch (e) {}
+            } catch (e) {
+            } finally {
+                isWritingToCloud = false;
+                await window.forceCloudRefresh();
+            }
         }
 
         function updateClock() {
             const now = new Date();
-            document.getElementById('current-datetime').innerText = `${now.toLocaleDateString()}, ${now.toLocaleTimeString()}`;
+            document.getElementById('current-datetime').innerText = `${now.toLocaleDateString('de-DE')}, ${now.toLocaleTimeString('de-DE')}`;
         }
 
         window.toggleChangeCalculator = function() {
@@ -2596,8 +2642,10 @@
             const total = subtotal * factor;
             const badgeType = selectedDiscount ? `${selectedDiscount.name} (-${selectedDiscount.percent}%)` : '';
             const waiterStr = currentWaiter ? `${currentWaiter.name} (${currentWaiter.id})` : 'Unbekannt';
+            const actorName = currentWaiter ? currentWaiter.name : 'Kellner';
             const now = new Date();
-            const timeStr = now.toLocaleDateString() + ' um ' + now.toLocaleTimeString();
+            const clockStr = now.toLocaleTimeString('de-DE');
+            const timeStr = now.toLocaleDateString('de-DE') + ' um ' + clockStr;
 
             // Lokalen Warenkorb sofort leeren
             cart = [];
@@ -2606,6 +2654,7 @@
             document.getElementById('cash-given-input').value = '';
             document.getElementById('change-amount').innerText = '0,00 €';
 
+            isWritingToCloud = true;
             try {
                 let assignedReceiptNumber = '';
                 await runTransaction(db, async (transaction) => {
@@ -2652,7 +2701,9 @@
                         salesJournal: liveJournal,
                         itemCounts: liveCounts,
                         stockData: liveStock,
-                        companySettings: liveCompany
+                        companySettings: liveCompany,
+                        lastUpdatedAt: clockStr,
+                        lastUpdatedBy: actorName
                     }, { merge: true });
                 });
 
@@ -2661,12 +2712,16 @@
             } catch (err) {
                 console.error("Checkout Fehler:", err);
                 alert("Fehler beim Buchen in der Cloud: " + err.message);
+            } finally {
+                isWritingToCloud = false;
+                await window.forceCloudRefresh();
             }
         }
 
         window.stornoEntry = async function(entryId) {
             if (!confirm("Möchtest du diese Bestellung wirklich stornieren? Betrag wird abgezogen und automatische Artikel wandern ins Lager zurück.")) return;
 
+            isWritingToCloud = true;
             try {
                 await runTransaction(db, async (transaction) => {
                     const snap = await transaction.get(kasseDocRef);
@@ -2684,14 +2739,15 @@
                     const liveProducts = Array.isArray(data.products) ? data.products : products;
 
                     const now = new Date();
+                    const clockStr = now.toLocaleTimeString('de-DE');
                     const actor = currentWaiter ? currentWaiter.name : 'Admin';
                     entry.items.forEach(item => {
                         const prod = liveProducts.find(p => p.id === item.id);
                         if (!prod || prod.stockMode !== 'manual') {
                             liveStock[item.id] = (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) + item.qty;
-                            liveStockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `+${item.qty} Stück (Storno durch ${actor})` });
+                            liveStockLog.unshift({ dateTime: now.toLocaleDateString('de-DE') + ' um ' + clockStr, itemName: item.name, stock: `+${item.qty} Stück (Storno durch ${actor})` });
                         } else {
-                            liveStockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `Storno durch ${actor} (Manueller Bestand unverändert)` });
+                            liveStockLog.unshift({ dateTime: now.toLocaleDateString('de-DE') + ' um ' + clockStr, itemName: item.name, stock: `Storno durch ${actor} (Manueller Bestand unverändert)` });
                         }
                         liveCounts[item.name] = Math.max(0, (liveCounts[item.name] || 0) - item.qty);
                     });
@@ -2701,12 +2757,17 @@
                         salesJournal: liveJournal,
                         stockData: liveStock,
                         stockLog: liveStockLog,
-                        itemCounts: liveCounts
+                        itemCounts: liveCounts,
+                        lastUpdatedAt: clockStr,
+                        lastUpdatedBy: actor
                     }, { merge: true });
                 });
                 alert("Bestellung erfolgreich storniert!");
             } catch (err) {
                 alert("Fehler beim Stornieren: " + err.message);
+            } finally {
+                isWritingToCloud = false;
+                await window.forceCloudRefresh();
             }
         }
 
@@ -2717,6 +2778,7 @@
             }
             if (!confirm("Möchtest du diesen Kassenbucheintrag komplett löschen? (Der Betrag wird vom Umsatz abgezogen und automatische Artikel wandern ins Lager zurück).")) return;
 
+            isWritingToCloud = true;
             try {
                 await runTransaction(db, async (transaction) => {
                     const snap = await transaction.get(kasseDocRef);
@@ -2742,21 +2804,29 @@
                     }
                     liveJournal = liveJournal.filter(e => e.id !== entryId);
 
+                    const clockStr = new Date().toLocaleTimeString('de-DE');
+                    const actor = currentWaiter ? currentWaiter.name : 'Admin';
+
                     transaction.set(kasseDocRef, {
                         totalRevenue: liveRevenue,
                         salesJournal: liveJournal,
                         stockData: liveStock,
-                        itemCounts: liveCounts
+                        itemCounts: liveCounts,
+                        lastUpdatedAt: clockStr,
+                        lastUpdatedBy: actor
                     }, { merge: true });
                 });
                 alert("Kassenbucheintrag gelöscht und Umsatz angepasst.");
             } catch (err) {
                 alert("Fehler beim Löschen: " + err.message);
+            } finally {
+                isWritingToCloud = false;
+                await window.forceCloudRefresh();
             }
         }
 
         // ==========================================
-        // PRODUKTE & KATEGORIEN BEARBEITEN (GEZIELTER SYNC)
+        // PRODUKTE & KATEGORIEN BEARBEITEN
         // ==========================================
         window.addCategory = function() {
             const catName = document.getElementById('new-cat-name').value.trim();
@@ -2793,11 +2863,13 @@
                 else if (field === 'category') p.category = value;
                 else if (field === 'stockMode') p.stockMode = value;
 
+                renderPosGrid();
+
                 clearTimeout(productSaveTimer);
                 if (immediate) {
                     window.savePartialToCloud({ products });
                 } else {
-                    productSaveTimer = setTimeout(() => window.savePartialToCloud({ products }), 500);
+                    productSaveTimer = setTimeout(() => window.savePartialToCloud({ products }), 350);
                 }
             }
         }
@@ -2805,7 +2877,6 @@
         function renderAdminProductsGrid() {
             const grid = document.getElementById('admin-products-grid');
             if (!grid) return;
-            // Eingabefelder nicht neu aufbauen, während gerade darin getippt wird
             if (grid.contains(document.activeElement) && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
                 return;
             }
@@ -2818,9 +2889,9 @@
                 card.innerHTML = `
                     <button class="admin-delete-badge" onclick="window.deleteProduct(${p.id})">×</button>
                     <label style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: -6px;">Produktname</label>
-                    <input type="text" value="${p.name}" oninput="window.updateProductField(${p.id}, 'name', this.value, false)" onchange="window.updateProductField(${p.id}, 'name', this.value, true)" placeholder="Produktname">
+                    <input type="text" value="${p.name}" oninput="window.updateProductField(${p.id}, 'name', this.value, false)" onchange="window.updateProductField(${p.id}, 'name', this.value, true)" onblur="window.updateProductField(${p.id}, 'name', this.value, true)" placeholder="Produktname">
                     <label style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: -6px;">Preis (€)</label>
-                    <input type="number" value="${p.price.toFixed(2)}" step="0.5" oninput="window.updateProductField(${p.id}, 'price', this.value, false)" onchange="window.updateProductField(${p.id}, 'price', this.value, true)" placeholder="Preis (€)">
+                    <input type="number" value="${p.price.toFixed(2)}" step="0.5" oninput="window.updateProductField(${p.id}, 'price', this.value, false)" onchange="window.updateProductField(${p.id}, 'price', this.value, true)" onblur="window.updateProductField(${p.id}, 'price', this.value, true)" placeholder="Preis (€)">
                     <label style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: -6px;">Kategorie</label>
                     <select onchange="window.updateProductField(${p.id}, 'category', this.value, true)">${catOptions}</select>
                     <label style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: -6px;">Lager-Änderung</label>
@@ -2854,7 +2925,7 @@
                     ? '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">✋ Manuell</span>'
                     : '<span style="background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">⚡ Auto</span>';
 
-                tr.innerHTML = `<td><strong>${p.name}</strong></td><td>${p.price.toFixed(2)} €</td><td>${modeBadge}</td><td>${stockInputHtml}</td><td>${stock <= 0 ? '<span style="color: var(--danger); font-weight: bold;">🚫 Leer</span>' : (stock < 5 ? '<span style="color: var(--warning); font-weight: bold;">⚠️ < 5</span>' : '<span style="color: var(--success); font-weight: bold;">OK</span>')}</td>`;
+                tr.innerHTML = `<td><strong>${p.name}</strong></td><td>${p.price.toFixed(2)} €</td><td>${modeBadge}</td><td>${stockInputHtml}</td><td>${stock <= 0 ? '<span style="color: var(--danger); font-weight: bold;">🚫 Leer</span>' : (stock < 5 ? '<span style="color: var(--warning); font-weight: bold;">⚠️ &lt; 5</span>' : '<span style="color: var(--success); font-weight: bold;">OK</span>')}</td>`;
                 tbody.appendChild(tr);
             });
         }
