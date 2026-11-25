@@ -1,0 +1,2745 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abi-Kassensystem | Apple Style</title>
+
+    <!-- SheetJS für echten Excel (.xlsx) Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <!-- QRCode.js für Beleg-QR-Codes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --text-main: #1d1d1f;
+            --text-secondary: #86868b;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --success: #34c759;
+            --danger: #ff3b30;
+            --warning: #ff9500;
+            --purple: #af52de;
+            --border-radius: 14px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(30px);
+            padding: 40px;
+            border-radius: 22px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+            width: 340px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .login-box h2 {
+            margin-top: 0;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: #e3e3e8;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s;
+        }
+        .login-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .login-input:focus:not(:disabled) {
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.3);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-card {
+            background: #ffffff;
+            border-radius: 22px;
+            padding: 28px;
+            width: 100%;
+            max-width: 540px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f2;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .modal-close-btn {
+            background: #e3e3e8;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 14px 22px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: #e3e3e8;
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            font-weight: 600;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #d1d1d6; transition: .3s; border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px;
+            background-color: white; transition: .3s; border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider.happy-hour-slider { background-color: var(--warning); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .view-section { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+        .view-section.active { display: flex; }
+
+        .main-container {
+            display: grid; grid-template-columns: 2fr 1fr; gap: 20px; flex: 1; overflow: hidden;
+        }
+
+        .section {
+            background: var(--card-bg); border-radius: var(--border-radius); padding: 20px;
+            box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .section-title {
+            font-size: 1.1rem; font-weight: 600; margin-top: 0; margin-bottom: 15px;
+            letter-spacing: -0.2px; border-bottom: 1px solid #f0f0f2; padding-bottom: 10px;
+        }
+
+        .multiplier-bar {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #f0f0f2;
+        }
+
+        .multiplier-btn {
+            background: #f0f0f2;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-main);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .multiplier-btn:hover { background: #e3e3e8; }
+        .multiplier-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        .pos-container { overflow-y: auto; flex: 1; padding-right: 5px; }
+
+        .category-group { margin-bottom: 20px; }
+        .category-title { font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 12px; }
+
+        .product-btn {
+            background: #fafafa; border: 1px solid #e5e5ea; border-radius: 12px; padding: 14px 10px;
+            text-align: center; cursor: pointer; transition: all 0.2s ease; display: flex;
+            flex-direction: column; justify-content: center; gap: 6px; height: 82px; position: relative;
+        }
+
+        .product-btn:hover { border-color: var(--accent); background: #f0f6ff; transform: scale(1.02); }
+        .product-btn.sold-out { background: #e5e5ea; border-color: #d1d1d6; opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+        .product-name { font-weight: 600; font-size: 0.95rem; }
+        .product-price { color: var(--accent); font-weight: 600; font-size: 1.05rem; }
+        .product-price.discounted { color: var(--warning); }
+        .old-price { text-decoration: line-through; font-size: 0.75rem; color: var(--text-secondary); margin-right: 4px; }
+
+        /* Admin iOS App Grid */
+        .ios-app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+            gap: 22px;
+            padding: 15px 5px;
+        }
+        .ios-app-tile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.18s ease;
+        }
+        .ios-app-tile:hover {
+            transform: scale(1.05);
+        }
+        .ios-app-tile:active {
+            transform: scale(0.95);
+        }
+        .ios-app-icon {
+            width: 74px;
+            height: 74px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.1rem;
+            color: white;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        .ios-app-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .admin-app-view {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .admin-app-view.active {
+            display: flex;
+        }
+        .admin-app-topbar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f2;
+        }
+        .ios-back-btn {
+            background: #f0f0f2;
+            border: none;
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .ios-back-btn:hover {
+            background: #e3e3e8;
+        }
+
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; overflow-y: auto; max-height: 520px; padding: 12px; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 14px; margin-bottom: 15px; }
+        .admin-product-card { background: #ffffff; border: 1px solid #d1d1d6; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.04); }
+        .admin-product-card input, .admin-product-card select {
+            padding: 8px 10px;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            background: #fafafa;
+        }
+        .admin-delete-badge { position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(255,59,48,0.4); }
+
+        .admin-sub-btn { background: #e3e3e8; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: var(--text-main); transition: all 0.2s; }
+        .admin-sub-btn.active { background: var(--accent); color: white; }
+
+        .cart-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; border: 1px solid #e5e5ea; border-radius: 10px; background: #fafafa; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e5e5ea; font-size: 0.9rem; }
+        .cart-item button { background: var(--danger); color: white; border: none; border-radius: 6px; padding: 2px 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
+
+        .total-container { margin-top: 12px; font-size: 1.25rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; background: #f0f6ff; padding: 12px 16px; border-radius: 10px; color: var(--accent); }
+        
+        .change-calculator { display: none; margin-top: 10px; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 10px; padding: 10px; }
+        .change-calculator.active { display: block; }
+        .change-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.9rem; }
+        .cash-buttons { display: flex; gap: 5px; margin-bottom: 8px; }
+        .cash-btn { flex: 1; background: #e3e3e8; border: none; padding: 6px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; transition: background 0.2s; }
+        .change-result { font-weight: 600; color: var(--success); font-size: 1.05rem; text-align: right; }
+
+        .checkout-actions { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .checkout-row { display: flex; gap: 8px; }
+
+        .btn { padding: 10px 16px; border: none; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: white; transition: opacity 0.2s, transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--accent); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); color: #fff; }
+        .btn-info { background: #0071e3; }
+        .btn-purple { background: var(--purple); }
+        .btn-dark { background: #1d1d1f; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .table-container { overflow-y: auto; max-height: 350px; border: 1px solid #e5e5ea; border-radius: 12px; margin-bottom: 15px; background: #fafafa; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+        th, td { padding: 10px 14px; border-bottom: 1px solid #e5e5ea; }
+        th { background: #f0f0f2; font-weight: 600; position: sticky; top: 0; z-index: 10; color: var(--text-secondary); }
+
+        .badge-status-active { background: var(--success); color: white; padding: 4px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; }
+        .badge-status-inactive { background: var(--danger); color: white; padding: 4px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; }
+
+        .radio-group { display: flex; gap: 15px; margin-bottom: 10px; font-weight: 500; font-size: 0.9rem; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #fafafa; border: 1px solid #e5e5ea; border-radius: 12px; padding: 14px; }
+        .stat-card h4 { margin: 0 0 4px 0; color: var(--text-secondary); font-size: 0.8rem; font-weight: 500; }
+        .stat-card .value { font-size: 1.2rem; font-weight: 600; color: var(--accent); }
+
+        /* Beleg-Vorschau Styling */
+        .receipt-paper {
+            background: #ffffff;
+            border: 1px dashed #c7c7cc;
+            border-radius: 12px;
+            padding: 22px;
+            font-family: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
+            font-size: 0.84rem;
+            color: #1d1d1f;
+            line-height: 1.45;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+        }
+        .receipt-paper h4 {
+            margin: 0 0 4px 0;
+            font-size: 1.05rem;
+            text-align: center;
+        }
+        .receipt-center { text-align: center; }
+        .receipt-divider {
+            border-top: 1px dashed #86868b;
+            margin: 10px 0;
+        }
+        .receipt-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        /* Standalone Kunden-Belegansicht (via QR-Code Scan) */
+        #public-receipt-view {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 20000;
+            overflow-y: auto;
+            padding: 24px;
+            box-sizing: border-box;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        #public-receipt-view.active {
+            display: flex;
+        }
+
+        footer { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary); }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printable-receipt-area, #printable-receipt-area * { visibility: visible; }
+            #printable-receipt-area {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                border: none;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Öffentliche Beleg-Ansicht beim Scannen des QR-Codes -->
+    <div id="public-receipt-view">
+        <div style="width: 100%; max-width: 440px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 16px;">
+                <h2 style="margin: 0; font-size: 1.3rem;">Digitaler Kassenbeleg</h2>
+                <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">Kleinbetragsrechnung nach § 33 UStDV</p>
+            </div>
+            <div id="public-receipt-container" class="receipt-paper"></div>
+            <div style="display: flex; gap: 10px; margin-top: 16px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="downloadReceiptImage(true)">📥 Als Bild speichern</button>
+                <button class="btn btn-dark" style="flex: 1;" onclick="window.print()">🖨️ Drucken / PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>Abi-Bar Login</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Bitte ID und Passwort eingeben.</p>
+            <input type="text" id="login-id" class="login-input" placeholder="ID (z.B. Jonas(Admin) oder Kellner001)" style="text-align: center;">
+            <input type="password" id="login-pass" class="login-input" placeholder="Passwort" style="text-align: center;" onkeydown="if(event.key==='Enter') performLogin()">
+            <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" onclick="performLogin()">Einloggen</button>
+        </div>
+    </div>
+
+    <!-- Modal 1: Manueller Lagerabzug für Kellner -->
+    <div id="manual-stock-modal" class="modal-overlay" onclick="if(event.target===this) closeModal('manual-stock-modal')">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>📦 Manueller Lager-Abzug</h3>
+                <button class="modal-close-btn" onclick="closeModal('manual-stock-modal')">×</button>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0;">
+                Hier können verbrauchte Artikel (nur bei Produkten mit manueller Lagerführung) abgezogen werden. Eine Erhöhung ist nur im Adminbereich möglich.
+            </p>
+            <div style="margin-bottom: 14px;">
+                <button class="btn btn-warning" id="undo-manual-stock-btn" style="width: 100%;" onclick="undoLastManualStock()" disabled>
+                    ↩️ Letzte Entfernung rückgängig machen
+                </button>
+                <div id="undo-info-text" style="font-size: 0.78rem; color: var(--text-secondary); text-align: center; margin-top: 4px;"></div>
+            </div>
+            <div class="table-container" style="max-height: 340px; margin-bottom: 0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Artikel</th>
+                            <th>Bestand</th>
+                            <th style="text-align: right;">Abziehen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="manual-stock-modal-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Rabatt auswählen -->
+    <div id="discount-modal" class="modal-overlay" onclick="if(event.target===this) closeModal('discount-modal')">
+        <div class="modal-card" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3>🏷️ Rabatt auswählen</h3>
+                <button class="modal-close-btn" onclick="closeModal('discount-modal')">×</button>
+            </div>
+            <div id="discount-modal-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Beleg-Vorschau & QR-Code -->
+    <div id="receipt-modal" class="modal-overlay" onclick="if(event.target===this) closeModal('receipt-modal')">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3>🧾 Kassenbeleg & QR-Code</h3>
+                <button class="modal-close-btn" onclick="closeModal('receipt-modal')">×</button>
+            </div>
+
+            <div id="printable-receipt-area">
+                <div id="receipt-preview-box" class="receipt-paper"></div>
+            </div>
+
+            <div style="margin-top: 18px; text-align: center; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 14px; padding: 16px;">
+                <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 8px;">📱 QR-Code zum Download auf das Handy:</div>
+                <div id="receipt-qrcode" style="display: flex; justify-content: center; margin: 10px auto;"></div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Einfach mit der Smartphone-Kamera scannen</div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 16px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="downloadReceiptImage(false)">📥 Beleg herunterladen</button>
+                <button class="btn btn-dark" style="flex: 1;" onclick="window.print()">🖨️ Drucken / PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div>
+            <h1>Angemeldet: <span id="current-waiter-display" style="color: var(--success); font-weight: 600;">--</span></h1>
+            <span id="current-datetime" style="font-size: 0.8rem; color: var(--text-secondary);">--.--.----, --:--:--</span>
+        </div>
+        <div class="header-controls">
+            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="performLogout()">Abmelden</button>
+            <button class="btn btn-dark" style="padding: 6px 12px; font-size: 0.8rem;" onclick="openManualStockModal()">📦 Lager-Abzug</button>
+            <div class="toggle-container">
+                <span id="header-hh-status" class="badge-status-inactive" style="padding: 4px 10px; border-radius: 8px; font-size: 0.8rem;">Happy Hour: Inaktiv</span>
+            </div>
+            <div class="toggle-container">
+                <span>Rückgeld</span>
+                <label class="switch">
+                    <input type="checkbox" id="change-toggle" onchange="toggleChangeCalculator()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="nav-tabs">
+                <button class="tab-btn active" onclick="switchView('pos')">Kasse</button>
+                <button class="tab-btn" id="admin-tab-btn" onclick="switchView('admin')" style="color: #991b1b; display: none;">🔒 Admin</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- KASSE -->
+    <div id="view-pos" class="view-section active">
+        <div class="main-container">
+            <div class="section">
+                <h2 class="section-title">Getränke & Produkte</h2>
+                <div class="multiplier-bar" id="multiplier-bar">
+                    <button class="multiplier-btn active" onclick="setMultiplier(1, this)">x1</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(2, this)">x2</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(3, this)">x3</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(4, this)">x4</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(5, this)">x5</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(6, this)">x6</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(7, this)">x7</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(8, this)">x8</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(9, this)">x9</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(10, this)">x10</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(12, this)">x12</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(15, this)">x15</button>
+                    <button class="multiplier-btn" onclick="setMultiplier(20, this)">x20</button>
+                </div>
+                <div class="pos-container" id="pos-container"></div>
+            </div>
+            <div class="section">
+                <h2 class="section-title">Aktuelle Bestellung</h2>
+                <ul class="cart-list" id="cart-list">
+                    <li style="text-align: center; color: var(--text-secondary); padding: 20px;">Warenkorb ist leer</li>
+                </ul>
+                <div class="total-container">
+                    <span>Gesamt:</span>
+                    <span id="total-price">0,00 €</span>
+                </div>
+                <div class="change-calculator" id="change-box">
+                    <div class="cash-buttons">
+                        <button class="cash-btn" onclick="addCash(5)">+ 5 €</button>
+                        <button class="cash-btn" onclick="addCash(10)">+ 10 €</button>
+                        <button class="cash-btn" onclick="addCash(20)">+ 20 €</button>
+                        <button class="cash-btn" onclick="addCash(50)">+ 50 €</button>
+                        <button class="cash-btn" onclick="setExactCash()">Passend</button>
+                    </div>
+                    <div class="change-row">
+                        <span>Gegeben:</span>
+                        <input type="number" id="cash-given-input" placeholder="0.00" oninput="calculateChange()" class="login-input" style="width:90px; text-align:right; margin:0;">
+                    </div>
+                    <div class="change-row" style="margin-top: 5px;">
+                        <span>Rückgeld:</span>
+                        <span class="change-result" id="change-amount">0,00 €</span>
+                    </div>
+                </div>
+                <div class="checkout-actions">
+                    <div class="checkout-row">
+                        <button class="btn btn-purple" id="btn-discount-modal" onclick="openDiscountModal()" style="flex: 1;" disabled>🏷️ Rabatt auswählen</button>
+                    </div>
+                    <div class="checkout-row">
+                        <button class="btn btn-danger" onclick="clearCart()" style="flex: 1;">Löschen</button>
+                        <button class="btn btn-success" id="pay-btn" onclick="checkout()" style="flex: 2;" disabled>Kassieren</button>
+                    </div>
+                    <div class="checkout-row">
+                        <button class="btn btn-info" id="btn-create-receipt" onclick="openLastOrderReceipt()" style="flex: 1;" disabled>🧾 Beleg erstellen (Letzte Bestellung)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN (iOS Home-Screen mit Apps) -->
+    <div id="view-admin" class="view-section">
+        <div class="section" style="flex: 1; overflow-y: auto;">
+            
+            <!-- ADMIN STARTSEITE (App-Übersicht + Cloud-Speicherknopf) -->
+            <div id="admin-apps-home" style="display: flex; flex-direction: column; flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #f0f0f2; padding-bottom: 14px; margin-bottom: 10px;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.25rem;">🔒 Admin-Zentrale</h2>
+                        <span id="cloud-sync-status-text" style="font-size: 0.8rem; color: var(--text-secondary);">Automatische Cloud-Synchronisation aktiv</span>
+                    </div>
+                    <button class="btn btn-success" style="padding: 12px 20px; font-size: 0.95rem; box-shadow: 0 4px 14px rgba(52,199,89,0.3);" onclick="manualCloudSaveAll()">
+                        💾 Alle Daten in Cloud speichern
+                    </button>
+                </div>
+
+                <div class="ios-app-grid">
+                    <div class="ios-app-tile" onclick="openAdminApp('products')">
+                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #0071e3, #40a9ff);">📦</div>
+                        <span class="ios-app-label">Produkte & Kasse</span>
+                    </div>
+
+                    <div class="ios-app-tile" onclick="openAdminApp('stock')">
+                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #34c759, #28a745);">📊</div>
+                        <span class="ios-app-label">Lager & Logbuch</span>
+                    </div>
+
+                    <div class="ios-app-tile" onclick="openAdminApp('journal')">
+                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #ff9500, #ff6b00);">📒</div>
+                        <span class="ios-app-label">Kassenbuch & Excel</span>
+                    </div>
+
+                    <div class="ios-app-tile" onclick="openAdminApp('discounts')">
+                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #af52de, #8944ab);">🏷️</div>
+                        <span class="ios-app-label">Rabatte</span>
+                    </div>
+
+                    <div class="ios-app-tile" onclick="openAdminApp('happyhour')">
+                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #ffcc00, #ff9500);">⚡</div>
+                        <span class="ios-app-label">Happy Hour</span>
+                    </div>
+
+                    <div class="ios-app-tile" onclick="openAdminApp('receipts')">
+                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #5856d6, #3634a3);">🧾</div>
+                        <span class="ios-app-label">Beleg & Firmendaten</span>
+                    </div>
+
+                    <div class="ios-app-tile" onclick="openAdminApp('waiters')">
+                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #30b0c7, #007aff);">👥</div>
+                        <span class="ios-app-label">Accounts</span>
+                    </div>
+
+                    <div class="ios-app-tile" onclick="openAdminApp('logs')">
+                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #8e8e93, #48484a);">📋</div>
+                        <span class="ios-app-label">System Logs</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP 1: Produkte & Kategorien -->
+            <div id="admin-app-products" class="admin-app-view">
+                <div class="admin-app-topbar">
+                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
+                    <h2 style="margin: 0; font-size: 1.15rem;">📦 Produkte, Kategorien & Lager-Modus</h2>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1rem;">Kasse für alle Kellner freigeben / sperren:</h3>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span id="kasse-status-label" style="font-size: 0.85rem; font-weight: bold; color: var(--success);">Aktiv</span>
+                        <label class="switch">
+                            <input type="checkbox" id="kasse-active-toggle" onchange="toggleKasseActive(this.checked)" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <input type="text" id="new-cat-name" class="login-input" placeholder="Neue Kategorie (z.B. Shots)" style="margin:0; flex:2;">
+                    <button class="btn btn-success" style="padding: 12px 20px;" onclick="addCategory()">Kategorie hinzufügen</button>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 1.05rem; margin: 0;">Produkte, Preise & Lager-Modus bearbeiten:</h3>
+                    <button class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="addNewProduct()">+ Produkt hinzufügen</button>
+                </div>
+                <div class="admin-grid" id="admin-products-grid"></div>
+            </div>
+
+            <!-- APP 2: Lagerübersicht & Logbuch -->
+            <div id="admin-app-stock" class="admin-app-view">
+                <div class="admin-app-topbar">
+                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
+                    <h2 style="margin: 0; font-size: 1.15rem;">📊 Lagerbestand & Logbuch</h2>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 0.9rem; color: var(--text-secondary);">Bestände einsehen und als Admin korrigieren</span>
+                    <button class="btn btn-primary" id="stock-unlock-btn" style="padding: 6px 14px; font-size: 0.85rem;" onclick="unlockStockAdminMode()">🔓 Bestands-Bearbeitung entsperren</button>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Artikel</th>
+                                <th>Preis</th>
+                                <th>Lager-Modus</th>
+                                <th>Lagerbestand</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stock-tbody"></tbody>
+                    </table>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 10px;">
+                    <h3 style="margin:0; font-size: 1rem;">Lager- & Storno-Logbuch</h3>
+                    <button class="btn btn-danger" id="clear-stock-log-btn" style="display: none; padding: 4px 10px; font-size: 0.75rem;" onclick="clearStockLog()">Logbuch löschen</button>
+                </div>
+                <div class="table-container" style="max-height: 220px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Datum & Uhrzeit</th>
+                                <th>Artikel / Aktion</th>
+                                <th>Bestand / Info</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stock-log-tbody">
+                            <tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Noch keine Einträge.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- APP 3: Kassenbuch & Excel-Export -->
+            <div id="admin-app-journal" class="admin-app-view">
+                <div class="admin-app-topbar">
+                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
+                    <h2 style="margin: 0; font-size: 1.15rem;">📒 Verkaufsstatistik & Kassenbuch</h2>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <span style="font-size: 0.9rem; color: var(--text-secondary);">Alle Verkäufe, Stornos und Excel-Export</span>
+                    <button class="btn btn-success" style="padding: 8px 16px; font-size: 0.85rem;" onclick="exportToExcel()">📥 Kassenbuch als Excel (.xlsx) herunterladen</button>
+                </div>
+                <div class="stats-grid" id="stats-grid"></div>
+                <h3 style="margin-top: 15px; font-size: 1rem;">Kassenbuch</h3>
+                <div class="table-container" style="max-height: 300px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Beleg-Nr.</th>
+                                <th>Datum & Uhrzeit</th>
+                                <th>Kellner</th>
+                                <th>Bestellung</th>
+                                <th>Betrag</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="journal-tbody">
+                            <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Noch keine Verkäufe getätigt.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- APP 4: Rabattknöpfe verwalten -->
+            <div id="admin-app-discounts" class="admin-app-view">
+                <div class="admin-app-topbar">
+                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
+                    <h2 style="margin: 0; font-size: 1.15rem;">🏷️ Rabattknöpfe verwalten</h2>
+                </div>
+
+                <div style="background: #fafafa; padding: 16px; border-radius: 12px; border: 1px solid #e5e5ea; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; font-size: 1rem;">Neuen Rabattknopf hinzufügen:</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="text" id="new-discount-name" class="login-input" placeholder="Name (z.B. Q13, VIP, Helfer)" style="margin: 0; flex: 2; min-width: 160px;">
+                        <input type="number" id="new-discount-percent" class="login-input" placeholder="Rabatt in % (z.B. 50)" min="1" max="100" style="margin: 0; flex: 1; min-width: 120px;">
+                        <select id="new-discount-color" class="login-input" style="margin: 0; flex: 1; min-width: 130px;">
+                            <option value="#af52de">Lila</option>
+                            <option value="#0071e3">Blau</option>
+                            <option value="#34c759">Grün</option>
+                            <option value="#ff9500">Orange</option>
+                            <option value="#ff3b30">Rot</option>
+                        </select>
+                        <button class="btn btn-success" style="padding: 12px 20px;" onclick="addDiscountPreset()">+ Hinzufügen</button>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1rem; margin-top: 0;">Aktive Rabattknöpfe bearbeiten:</h3>
+                <div class="table-container" style="max-height: 320px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Bezeichnung</th>
+                                <th>Rabatt (%)</th>
+                                <th>Farbe</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-discounts-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- APP 5: Happy Hour Management -->
+            <div id="admin-app-happyhour" class="admin-app-view">
+                <div class="admin-app-topbar">
+                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
+                    <h2 style="margin: 0; font-size: 1.15rem;">⚡ Happy Hour Management</h2>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <h3 style="margin: 0; font-size: 1.1rem;">Happy Hour Hauptschalter:</h3>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span id="hh-status-label" style="font-size: 0.85rem; font-weight: bold; color: var(--danger);">Inaktiv</span>
+                        <label class="switch">
+                            <input type="checkbox" id="happy-hour-main-toggle" onchange="toggleGlobalHappyHour(this.checked)">
+                            <span class="slider happy-hour-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f2; padding-bottom: 12px;">
+                    <button class="admin-sub-btn admin-hh-tab-btn active" onclick="switchHHTab('manual')">Manuell Steuern</button>
+                    <button class="admin-sub-btn admin-hh-tab-btn" onclick="switchHHTab('schedule')">Zeitpläne verwalten</button>
+                </div>
+
+                <div id="hh-sec-manual" style="display: block;">
+                    <div style="background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; margin-bottom: 25px; box-shadow: var(--shadow);">
+                        <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--accent);">Manuelle Happy Hour Starten</h3>
+                        
+                        <div class="radio-group">
+                            <label><input type="radio" name="manual_hh_mode" value="global" onchange="updateManualUI()" checked> Allgemein (Gleicher Rabatt)</label>
+                            <label><input type="radio" name="manual_hh_mode" value="individual" onchange="updateManualUI()"> Individuell</label>
+                        </div>
+
+                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.9rem; font-weight: 600;">Eingabe für "Allgemein" (€):</span>
+                            <input type="number" id="manual-global-discount" class="login-input" value="1.00" step="0.5" min="0.1" style="width: 100px; margin: 0;">
+                        </div>
+
+                        <div class="table-container" style="max-height: 250px; margin-bottom: 15px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">Aktiv</th>
+                                        <th>Produkt</th>
+                                        <th>Normalpreis</th>
+                                        <th>Individueller Rabatt (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manual-hh-products"></tbody>
+                            </table>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-warning" onclick="startManualHH()">WERTE SPEICHERN & STARTEN</button>
+                            <button class="btn btn-danger" onclick="stopHH()">RESET / BEENDEN</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="hh-sec-schedule" style="display: none;">
+                    <div style="background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; margin-bottom: 20px; box-shadow: var(--shadow);">
+                        <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--success);">Zeitplan hinzufügen</h3>
+                        
+                        <div style="display: flex; gap: 12px; margin-bottom: 15px;">
+                            <input type="text" id="sched-day" class="login-input" placeholder="Tag / Datum (z.B. Freitag)" style="margin: 0; flex: 2;">
+                            <input type="time" id="sched-start" class="login-input" style="margin: 0; flex: 1;">
+                            <input type="time" id="sched-end" class="login-input" style="margin: 0; flex: 1;">
+                        </div>
+
+                        <div class="radio-group">
+                            <label><input type="radio" name="sched_hh_mode" value="global" onchange="updateSchedUI()" checked> Allgemein</label>
+                            <label><input type="radio" name="sched_hh_mode" value="individual" onchange="updateSchedUI()"> Individuell</label>
+                        </div>
+
+                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.9rem; font-weight: 600;">Eingabe für "Allgemein" (€):</span>
+                            <input type="number" id="sched-global-discount" class="login-input" value="1.00" step="0.5" min="0.1" style="width: 100px; margin: 0;">
+                        </div>
+
+                        <div class="table-container" style="max-height: 250px; margin-bottom: 15px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">Aktiv</th>
+                                        <th>Produkt</th>
+                                        <th>Normalpreis</th>
+                                        <th>Individueller Rabatt (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sched-hh-products"></tbody>
+                            </table>
+                        </div>
+
+                        <button class="btn btn-success" onclick="addScheduleHH()">ZEITPLAN SPEICHERN</button>
+
+                        <h4 style="margin-top: 25px; margin-bottom: 10px;">Hinterlegte Zeitpläne:</h4>
+                        <div class="table-container" style="max-height: 180px;">
+                            <table>
+                                <thead><tr><th>Zeitraum / Tag</th><th>Von - Bis</th><th>Typ</th><th>Aktion</th></tr></thead>
+                                <tbody id="hh-schedule-list">
+                                    <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Zeitpläne hinterlegt.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP 6: Beleg & Firmendaten (Kleinbetragsrechnung) -->
+            <div id="admin-app-receipts" class="admin-app-view">
+                <div class="admin-app-topbar">
+                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
+                    <h2 style="margin: 0; font-size: 1.15rem;">🧾 Beleg & Firmendaten (Kleinbetragsrechnung)</h2>
+                </div>
+
+                <div style="background: #fafafa; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; max-width: 650px;">
+                    <p style="margin-top: 0; font-size: 0.85rem; color: var(--text-secondary);">
+                        Diese Stammdaten erscheinen automatisch auf jedem erstellten Kassenbon (Pflichtangaben für Kleinbetragsrechnungen bis 250 € brutto).
+                    </p>
+
+                    <label style="font-size: 0.85rem; font-weight: 600;">Vollständiger Name des Unternehmens / der GbR:</label>
+                    <input type="text" id="comp-name" class="login-input" placeholder="z.B. Abi 2027 Event GbR">
+
+                    <label style="font-size: 0.85rem; font-weight: 600;">Straße & Hausnummer:</label>
+                    <input type="text" id="comp-street" class="login-input" placeholder="z.B. Musterstraße 12">
+
+                    <label style="font-size: 0.85rem; font-weight: 600;">PLZ & Ort:</label>
+                    <input type="text" id="comp-city" class="login-input" placeholder="z.B. 95632 Wunsiedel">
+
+                    <label style="font-size: 0.85rem; font-weight: 600;">Steuernummer:</label>
+                    <input type="text" id="comp-tax" class="login-input" placeholder="z.B. 258/123/45678">
+
+                    <label style="font-size: 0.85rem; font-weight: 600;">Hinweis zur Umsatzsteuer (Kleinunternehmerregelung):</label>
+                    <input type="text" id="comp-tax-note" class="login-input" placeholder="Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.">
+
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <div style="flex: 2; min-width: 160px;">
+                            <label style="font-size: 0.85rem; font-weight: 600;">Rechnungsnummer-Präfix:</label>
+                            <input type="text" id="comp-receipt-prefix" class="login-input" placeholder="RE-2026-">
+                        </div>
+                        <div style="flex: 1; min-width: 130px;">
+                            <label style="font-size: 0.85rem; font-weight: 600;">Nächste Laufnummer:</label>
+                            <input type="number" id="comp-receipt-counter" class="login-input" min="1" placeholder="1">
+                        </div>
+                    </div>
+
+                    <label style="font-size: 0.85rem; font-weight: 600;">Fußzeile auf dem Beleg:</label>
+                    <input type="text" id="comp-footer" class="login-input" placeholder="Vielen Dank für Ihren Besuch!">
+
+                    <button class="btn btn-success" style="width: 100%; margin-top: 12px; padding: 12px;" onclick="saveCompanySettings()">
+                        💾 Beleg- & Firmendaten speichern
+                    </button>
+                </div>
+            </div>
+
+            <!-- APP 7: Accounts -->
+            <div id="admin-app-waiters" class="admin-app-view">
+                <div class="admin-app-topbar">
+                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
+                    <h2 style="margin: 0; font-size: 1.15rem;">👥 Voreingestellte Accounts</h2>
+                </div>
+                <div class="table-container" style="max-height: 400px;">
+                    <table>
+                        <thead>
+                            <tr><th>Name / ID</th><th>Rolle</th></tr>
+                        </thead>
+                        <tbody id="waiters-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- APP 8: Logs & System -->
+            <div id="admin-app-logs" class="admin-app-view">
+                <div class="admin-app-topbar">
+                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
+                    <h2 style="margin: 0; font-size: 1.15rem;">📋 System Logs & Reset</h2>
+                </div>
+                <h3 style="font-size: 1rem; margin-top: 0;">An- und Abmelde-Logbuch:</h3>
+                <div class="table-container" style="max-height: 300px; margin-bottom: 25px;">
+                    <table>
+                        <thead>
+                            <tr><th>Datum & Uhrzeit</th><th>Name</th><th>ID</th><th>Aktion</th></tr>
+                        </thead>
+                        <tbody id="login-log-tbody">
+                            <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Einträge.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="btn btn-danger" style="padding: 12px 24px;" onclick="resetData()">System komplett zurücksetzen</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer>
+        <span>Cloud-Sync aktiv (Apple Design)</span>
+        <span>Umsatz heute: <strong id="total-revenue">0,00 €</strong></span>
+    </footer>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDSZ2r9G9328WMfL_KFZr0JqvrEVGmpdxo",
+            authDomain: "abi27wun.firebaseapp.com",
+            projectId: "abi27wun",
+            storageBucket: "abi27wun.firebasestorage.app",
+            messagingSenderId: "1060588154453",
+            appId: "1:1060588154453:web:80025063f74e274c9feedc"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let categories = ["Getränke", "Alkoholfrei", "Essen & Snacks"];
+        let products = [
+            { id: 1, name: "Bier 0,33l", price: 3.00, category: "Getränke", stockMode: "auto" },
+            { id: 2, name: "Cola / Fanta", price: 2.50, category: "Alkoholfrei", stockMode: "auto" },
+            { id: 3, name: "Wasser", price: 2.00, category: "Alkoholfrei", stockMode: "auto" },
+            { id: 4, name: "Longdrink", price: 6.00, category: "Getränke", stockMode: "auto" },
+            { id: 5, name: "Shot", price: 2.00, category: "Getränke", stockMode: "auto" },
+            { id: 6, name: "Cocktail", price: 7.00, category: "Getränke", stockMode: "auto" },
+            { id: 7, name: "Snack / Chips", price: 1.50, category: "Essen & Snacks", stockMode: "auto" },
+            { id: 8, name: "Alkoholfreies", price: 3.00, category: "Alkoholfrei", stockMode: "auto" }
+        ];
+
+        let discountPresets = [
+            { id: 1, name: "Q13 (Frei)", percent: 100, color: "#af52de" },
+            { id: 2, name: "VIP (50%)", percent: 50, color: "#0071e3" }
+        ];
+
+        let companySettings = {
+            companyName: "Abi 2027 GbR",
+            companyStreet: "Mühlberg 9B",
+            companyCity: "95686 Fichtelberg",
+            taxNumber: "Steuernummer folgt",
+            taxNote: "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
+            receiptPrefix: "RE-2026-",
+            receiptCounter: 1,
+            receiptFooter: "Vielen Dank für Ihren Besuch!"
+        };
+
+        let cart = [];
+        let totalRevenue = 0;
+        let salesJournal = []; 
+        let itemCounts = {};   
+        let stockData = {};    
+        let stockLog = [];     
+        let loginLog = [];
+        let manualStockHistory = [];
+        
+        // Feste Accounts (Admins + Kellner 1 bis 10)
+        const authorizedWaiters = {
+            "Jonas(Admin)": { name: "Jonas", pass: "2027", isAdmin: true },
+            "Julian(Admin)": { name: "Julian", pass: "2027", isAdmin: true },
+            "Kellner001": { name: "Kellner 1", pass: "4821", isAdmin: false },
+            "Kellner002": { name: "Kellner 2", pass: "9356", isAdmin: false },
+            "Kellner003": { name: "Kellner 3", pass: "1472", isAdmin: false },
+            "Kellner004": { name: "Kellner 4", pass: "6839", isAdmin: false },
+            "Kellner005": { name: "Kellner 5", pass: "2904", isAdmin: false },
+            "Kellner006": { name: "Kellner 6", pass: "5183", isAdmin: false },
+            "Kellner007": { name: "Kellner 7", pass: "7460", isAdmin: false },
+            "Kellner008": { name: "Kellner 8", pass: "3215", isAdmin: false },
+            "Kellner009": { name: "Kellner 9", pass: "8942", isAdmin: false },
+            "Kellner010": { name: "Kellner 10", pass: "5671", isAdmin: false }
+        };
+
+        let isHappyHour = false;
+        let activeDiscounts = {}; 
+        let happyHourSchedules = [];
+        let individualDiscountsValues = {};
+        let kasseActive = true;
+        
+        let selectedDiscount = null;
+        let currentMultiplier = 1;
+        let currentWaiter = null;
+        let stockAdminUnlocked = false;
+        let currentViewedReceiptOrder = null;
+        let productSaveTimer = null;
+
+        // ==========================================
+        // QR-CODE BELEG MODUS (Wenn Kunde QR scannt)
+        // ==========================================
+        function checkPublicReceiptMode() {
+            const params = new URLSearchParams(window.location.search);
+            const belegParam = params.get('beleg');
+            if (!belegParam) return false;
+
+            try {
+                const decodedStr = decodeURIComponent(escape(atob(decodeURIComponent(belegParam))));
+                const p = JSON.parse(decodedStr);
+                const reconstructedOrder = {
+                    receiptNumber: p.nr,
+                    time: p.dt,
+                    items: (p.it || []).map(arr => ({ qty: arr[0], name: arr[1], price: arr[2] })),
+                    subtotal: p.sub,
+                    total: p.tot,
+                    badge: p.bg
+                };
+                const reconstructedCompany = {
+                    companyName: p.cn || companySettings.companyName,
+                    companyStreet: p.cs || companySettings.companyStreet,
+                    companyCity: p.cc || companySettings.companyCity,
+                    taxNumber: p.tn || companySettings.taxNumber,
+                    taxNote: p.nt || companySettings.taxNote,
+                    receiptFooter: p.ft || companySettings.receiptFooter
+                };
+                currentViewedReceiptOrder = { order: reconstructedOrder, company: reconstructedCompany };
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('public-receipt-container').innerHTML = buildReceiptHTML(reconstructedOrder, reconstructedCompany);
+                document.getElementById('public-receipt-view').classList.add('active');
+                return true;
+            } catch (err) {
+                console.error("Fehler beim Dekodieren des Belegs:", err);
+                return false;
+            }
+        }
+
+        function initApp() {
+            if (checkPublicReceiptMode()) return;
+
+            products.forEach(p => { 
+                if (stockData[p.id] === undefined) stockData[p.id] = 50; 
+            });
+
+            // Cloud-Listener läuft immer – auch wenn niemand eingeloggt ist
+            onSnapshot(doc(db, "kasse", "data"), (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    totalRevenue = data.totalRevenue || 0;
+                    salesJournal = data.salesJournal || [];
+                    itemCounts = data.itemCounts || {};
+                    stockData = data.stockData || {};
+                    stockLog = data.stockLog || [];
+                    loginLog = data.loginLog || [];
+                    manualStockHistory = data.manualStockHistory || [];
+                    
+                    if (data.products && Array.isArray(data.products)) {
+                        products = data.products.map(p => ({
+                            ...p,
+                            stockMode: p.stockMode || 'auto'
+                        }));
+                    }
+                    products.forEach(p => {
+                        if (stockData[p.id] === undefined) stockData[p.id] = 50;
+                    });
+
+                    categories = data.categories || categories;
+                    if (data.discountPresets && Array.isArray(data.discountPresets)) {
+                        discountPresets = data.discountPresets;
+                    }
+                    if (data.companySettings) {
+                        companySettings = { ...companySettings, ...data.companySettings };
+                    }
+                    happyHourSchedules = data.happyHourSchedules || [];
+                    
+                    isHappyHour = data.isHappyHour || false;
+                    activeDiscounts = data.activeDiscounts || {};
+                    individualDiscountsValues = data.individualDiscountsValues || {};
+                    kasseActive = data.kasseActive !== undefined ? data.kasseActive : true;
+
+                    document.getElementById('total-revenue').innerText = totalRevenue.toFixed(2) + ' €';
+                    document.getElementById('happy-hour-main-toggle').checked = isHappyHour;
+                    document.getElementById('kasse-active-toggle').checked = kasseActive;
+                    
+                    const receiptBtn = document.getElementById('btn-create-receipt');
+                    if (receiptBtn) {
+                        receiptBtn.disabled = salesJournal.length === 0;
+                    }
+
+                    updateHappyHourHeaderStatus();
+                    updateKasseActiveStatusLabel();
+                    populateCompanySettingsForm();
+
+                    renderPosGrid();
+                    renderStockTable();
+                    renderStockLog();
+                    renderJournal();
+                    renderStats();
+                    renderWaitersTable();
+                    renderLoginLog();
+                    renderAdminProductsGrid();
+                    renderAdminDiscountsTable();
+                    renderManualHHProducts();
+                    renderSchedHHProducts();
+                    renderSchedulesList();
+                    renderManualStockModalContent();
+                    updateCartUI();
+                } else {
+                    // Initiales Dokument anlegen, falls noch nicht vorhanden
+                    window.saveDataToCloud();
+                }
+            }, (error) => {
+                console.error("Firebase Sync Fehler:", error);
+                const statusEl = document.getElementById('cloud-sync-status-text');
+                if (statusEl) {
+                    statusEl.innerText = "Cloud-Verbindungsfehler: " + error.message;
+                    statusEl.style.color = 'var(--danger)';
+                }
+            });
+
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        window.saveDataToCloud = async function() {
+            const rawPayload = {
+                totalRevenue,
+                salesJournal,
+                itemCounts,
+                stockData,
+                stockLog,
+                loginLog,
+                manualStockHistory,
+                products,
+                categories,
+                discountPresets,
+                companySettings,
+                happyHourSchedules,
+                isHappyHour,
+                activeDiscounts,
+                individualDiscountsValues,
+                kasseActive
+            };
+            // Bereinigt alle 'undefined'-Werte, damit Firestore setDoc nicht abweist
+            const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
+            try {
+                localStorage.setItem('abi_kasse_backup', JSON.stringify(cleanPayload));
+            } catch (e) {}
+
+            try {
+                await setDoc(doc(db, "kasse", "data"), cleanPayload);
+                const now = new Date();
+                const statusEl = document.getElementById('cloud-sync-status-text');
+                if (statusEl) {
+                    statusEl.innerText = `Zuletzt in Cloud gespeichert: ${now.toLocaleTimeString()} Uhr`;
+                    statusEl.style.color = 'var(--success)';
+                }
+            } catch (err) {
+                console.error("Firebase Speicherfehler:", err);
+                alert("Fehler beim Speichern in der Cloud: " + err.message);
+            }
+        }
+
+        window.manualCloudSaveAll = async function() {
+            await window.saveDataToCloud();
+            alert("Alle Kassendaten, Produkte, Lagerbestände, Rabatte und Belegdaten wurden erfolgreich in der Cloud gespeichert!");
+        }
+
+        // ==========================================
+        // NAVIGATION & ADMIN-APPS
+        // ==========================================
+        window.switchView = function(viewName) {
+            if (viewName === 'admin' && (!currentWaiter || !currentWaiter.isAdmin)) {
+                alert("Keine Admin-Berechtigung!");
+                return;
+            }
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            if (viewName === 'pos') {
+                document.getElementById('view-pos').classList.add('active');
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            } else if (viewName === 'admin') {
+                document.getElementById('view-admin').classList.add('active');
+                document.getElementById('admin-tab-btn').classList.add('active');
+                closeAdminApp();
+            }
+        }
+
+        window.openAdminApp = function(appName) {
+            document.getElementById('admin-apps-home').style.display = 'none';
+            document.querySelectorAll('.admin-app-view').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById('admin-app-' + appName);
+            if (target) target.classList.add('active');
+        }
+
+        window.closeAdminApp = function() {
+            document.querySelectorAll('.admin-app-view').forEach(el => el.classList.remove('active'));
+            document.getElementById('admin-apps-home').style.display = 'flex';
+        }
+
+        window.openModal = function(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        window.closeModal = function(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        window.switchHHTab = function(tabName) {
+            document.querySelectorAll('.admin-hh-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('hh-sec-manual').style.display = 'none';
+            document.getElementById('hh-sec-schedule').style.display = 'none';
+
+            if (tabName === 'manual') {
+                document.querySelectorAll('.admin-hh-tab-btn')[0].classList.add('active');
+                document.getElementById('hh-sec-manual').style.display = 'block';
+            } else {
+                document.querySelectorAll('.admin-hh-tab-btn')[1].classList.add('active');
+                document.getElementById('hh-sec-schedule').style.display = 'block';
+            }
+        }
+
+        function updateHappyHourHeaderStatus() {
+            const statusEl = document.getElementById('header-hh-status');
+            const statusLabel = document.getElementById('hh-status-label');
+            if (isHappyHour) {
+                statusEl.innerText = "⚡ Happy Hour: Aktiv";
+                statusEl.className = "badge-status-active";
+                if (statusLabel) { statusLabel.innerText = "Aktiv"; statusLabel.style.color = "var(--success)"; }
+            } else {
+                statusEl.innerText = "Happy Hour: Inaktiv";
+                statusEl.className = "badge-status-inactive";
+                if (statusLabel) { statusLabel.innerText = "Inaktiv"; statusLabel.style.color = "var(--danger)"; }
+            }
+        }
+
+        function updateKasseActiveStatusLabel() {
+            const label = document.getElementById('kasse-status-label');
+            if (label) {
+                if (kasseActive) {
+                    label.innerText = "Aktiv";
+                    label.style.color = "var(--success)";
+                } else {
+                    label.innerText = "Gesperrt";
+                    label.style.color = "var(--danger)";
+                }
+            }
+        }
+
+        window.toggleKasseActive = function(checked) {
+            kasseActive = checked;
+            updateKasseActiveStatusLabel();
+            window.saveDataToCloud();
+            renderPosGrid();
+        }
+
+        // ==========================================
+        // MANUELLER LAGER-ABZUG & RÜCKGÄNGIG FÜR KELLNER
+        // ==========================================
+        window.openManualStockModal = function() {
+            renderManualStockModalContent();
+            openModal('manual-stock-modal');
+        }
+
+        function renderManualStockModalContent() {
+            const tbody = document.getElementById('manual-stock-modal-tbody');
+            const undoBtn = document.getElementById('undo-manual-stock-btn');
+            const undoInfo = document.getElementById('undo-info-text');
+            if (!tbody) return;
+
+            const validUndoItem = manualStockHistory.find(entry => {
+                const prod = products.find(p => p.id === entry.productId);
+                return prod && prod.stockMode === 'manual';
+            });
+
+            if (validUndoItem) {
+                undoBtn.disabled = false;
+                undoInfo.innerText = `Letzte Entnahme: -${validUndoItem.amount}x ${validUndoItem.productName} (${validUndoItem.waiter}, ${validUndoItem.time})`;
+            } else {
+                undoBtn.disabled = true;
+                undoInfo.innerText = "Keine rückgängig machbare Entnahme vorhanden.";
+            }
+
+            const manualProducts = products.filter(p => p.stockMode === 'manual');
+            tbody.innerHTML = '';
+
+            if (manualProducts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--text-secondary); padding: 20px;">Keine Produkte für manuelle Lageränderung konfiguriert.</td></tr>';
+                return;
+            }
+
+            manualProducts.forEach(p => {
+                const stock = stockData[p.id] !== undefined ? stockData[p.id] : 50;
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${p.name}</strong><br><span style="font-size: 0.75rem; color: var(--text-secondary);">${p.category || ''}</span></td>
+                        <td><span style="font-weight: 600; color: ${stock <= 0 ? 'var(--danger)' : 'var(--text-main)'};">${stock} Stück</span></td>
+                        <td style="text-align: right;">
+                            <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                <input type="number" id="manual-deduct-qty-${p.id}" value="1" min="1" max="${stock}" class="login-input" style="width: 60px; padding: 6px; margin: 0; text-align: center;" ${stock <= 0 ? 'disabled' : ''}>
+                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deductManualStock(${p.id})" ${stock <= 0 ? 'disabled' : ''}>- Abziehen</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        window.deductManualStock = function(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.stockMode !== 'manual') {
+                alert("Dieses Produkt ist nicht für manuelle Änderungen freigegeben.");
+                return;
+            }
+            const currentStock = stockData[productId] !== undefined ? stockData[productId] : 50;
+            const inputEl = document.getElementById(`manual-deduct-qty-${productId}`);
+            const amount = parseInt(inputEl ? inputEl.value : 1) || 0;
+
+            if (amount <= 0) {
+                alert("Es kann nur eine Menge ab 1 abgezogen werden (nur weniger, nicht mehr).");
+                return;
+            }
+            if (amount > currentStock) {
+                alert(`Nicht genügend Bestand! Es sind nur noch ${currentStock} Stück vorhanden.`);
+                return;
+            }
+
+            stockData[productId] = currentStock - amount;
+            const now = new Date();
+            const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
+            const timeStr = now.toLocaleTimeString();
+
+            manualStockHistory.unshift({
+                id: Date.now(),
+                productId: product.id,
+                productName: product.name,
+                amount: amount,
+                waiter: waiterLabel,
+                time: timeStr
+            });
+
+            stockLog.unshift({
+                dateTime: now.toLocaleDateString() + ' um ' + timeStr,
+                itemName: product.name,
+                stock: `-${amount} Stück (Manuell durch ${waiterLabel}, neu: ${stockData[productId]})`
+            });
+
+            window.saveDataToCloud();
+            renderManualStockModalContent();
+        }
+
+        window.undoLastManualStock = function() {
+            const idx = manualStockHistory.findIndex(entry => {
+                const prod = products.find(p => p.id === entry.productId);
+                return prod && prod.stockMode === 'manual';
+            });
+
+            if (idx === -1) {
+                alert("Keine rückgängig machbare Entnahme gefunden.");
+                return;
+            }
+
+            const entry = manualStockHistory[idx];
+            const product = products.find(p => p.id === entry.productId);
+            if (!product || product.stockMode !== 'manual') return;
+
+            const currentStock = stockData[entry.productId] !== undefined ? stockData[entry.productId] : 0;
+            stockData[entry.productId] = currentStock + entry.amount;
+            manualStockHistory.splice(idx, 1);
+
+            const now = new Date();
+            const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
+            stockLog.unshift({
+                dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(),
+                itemName: product.name,
+                stock: `+${entry.amount} Stück (Rückgängig durch ${waiterLabel}, neu: ${stockData[entry.productId]})`
+            });
+
+            window.saveDataToCloud();
+            renderManualStockModalContent();
+        }
+
+        // ==========================================
+        // LAGER ADMIN MODUS (IM ADMINBEREICH)
+        // ==========================================
+        window.unlockStockAdminMode = function() {
+            const pass = prompt("Bitte Admin-Passwort eingeben:");
+            let matchedAdmin = false;
+            for (const [id, w] of Object.entries(authorizedWaiters)) {
+                if (w.isAdmin && w.pass === pass) {
+                    matchedAdmin = true;
+                    break;
+                }
+            }
+            if (pass === "2027" || matchedAdmin) {
+                stockAdminUnlocked = true;
+                document.getElementById('stock-unlock-btn').innerText = "🔒 Bestands-Bearbeitung sperren";
+                document.getElementById('stock-unlock-btn').className = "btn btn-danger";
+                document.getElementById('stock-unlock-btn').setAttribute("onclick", "lockStockAdminMode()");
+                document.getElementById('clear-stock-log-btn').style.display = 'inline-block';
+                renderStockTable();
+                renderStockLog();
+                alert("Lager-Bearbeitung entsperrt!");
+            } else {
+                alert("Falsches Passwort oder keine Admin-Rechte!");
+            }
+        }
+
+        window.lockStockAdminMode = function() {
+            stockAdminUnlocked = false;
+            document.getElementById('stock-unlock-btn').innerText = "🔓 Bestands-Bearbeitung entsperren";
+            document.getElementById('stock-unlock-btn').className = "btn btn-primary";
+            document.getElementById('stock-unlock-btn').setAttribute("onclick", "unlockStockAdminMode()");
+            document.getElementById('clear-stock-log-btn').style.display = 'none';
+            renderStockTable();
+            renderStockLog();
+        }
+
+        window.updateStockValue = function(productId, val) {
+            if (!stockAdminUnlocked) return;
+            const newVal = Math.max(0, parseInt(val) || 0);
+            stockData[productId] = newVal;
+            const product = products.find(p => p.id === productId);
+            const now = new Date();
+            const actor = currentWaiter ? currentWaiter.name : 'Admin';
+            stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: product ? product.name : 'Unbekannt', stock: `Auf ${newVal} geändert durch ${actor}` });
+            window.saveDataToCloud();
+        }
+
+        window.clearStockLog = function() {
+            if (!stockAdminUnlocked) return;
+            if (confirm("Möchtest du das gesamte Lager-Logbuch löschen?")) {
+                stockLog = [];
+                window.saveDataToCloud();
+            }
+        }
+
+        // ==========================================
+        // RABATT-VERWALTUNG & RABATT-AUSWAHLFENSTER
+        // ==========================================
+        window.addDiscountPreset = function() {
+            const name = document.getElementById('new-discount-name').value.trim();
+            const percent = parseFloat(document.getElementById('new-discount-percent').value);
+            const color = document.getElementById('new-discount-color').value || '#af52de';
+
+            if (!name || isNaN(percent) || percent <= 0 || percent > 100) {
+                alert("Bitte einen gültigen Namen und einen Rabatt zwischen 1% und 100% eingeben.");
+                return;
+            }
+
+            discountPresets.push({
+                id: Date.now(),
+                name: name,
+                percent: percent,
+                color: color
+            });
+
+            document.getElementById('new-discount-name').value = '';
+            document.getElementById('new-discount-percent').value = '';
+            renderAdminDiscountsTable();
+            window.saveDataToCloud();
+        }
+
+        window.updateDiscountPreset = function(id, field, value) {
+            const d = discountPresets.find(item => item.id === id);
+            if (!d) return;
+            if (field === 'name') d.name = value.trim() || d.name;
+            else if (field === 'percent') {
+                const p = parseFloat(value);
+                if (!isNaN(p) && p > 0 && p <= 100) d.percent = p;
+            } else if (field === 'color') {
+                d.color = value;
+            }
+            window.saveDataToCloud();
+        }
+
+        window.deleteDiscountPreset = function(id) {
+            if (confirm("Diesen Rabattknopf wirklich löschen?")) {
+                discountPresets = discountPresets.filter(item => item.id !== id);
+                if (selectedDiscount && selectedDiscount.id === id) {
+                    selectedDiscount = null;
+                }
+                renderAdminDiscountsTable();
+                window.saveDataToCloud();
+            }
+        }
+
+        function renderAdminDiscountsTable() {
+            const tbody = document.getElementById('admin-discounts-tbody');
+            if (!tbody) return;
+            if (tbody.contains(document.activeElement) && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+                return;
+            }
+            tbody.innerHTML = '';
+
+            if (discountPresets.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Rabattknöpfe hinterlegt.</td></tr>';
+                return;
+            }
+
+            discountPresets.forEach(d => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><input type="text" class="login-input" style="margin:0; padding:6px 10px;" value="${d.name}" onchange="updateDiscountPreset(${d.id}, 'name', this.value)"></td>
+                        <td><input type="number" class="login-input" style="margin:0; padding:6px 10px; width: 85px;" min="1" max="100" value="${d.percent}" onchange="updateDiscountPreset(${d.id}, 'percent', this.value)"> %</td>
+                        <td>
+                            <select class="login-input" style="margin:0; padding:6px 10px;" onchange="updateDiscountPreset(${d.id}, 'color', this.value)">
+                                <option value="#af52de" ${d.color === '#af52de' ? 'selected' : ''}>Lila</option>
+                                <option value="#0071e3" ${d.color === '#0071e3' ? 'selected' : ''}>Blau</option>
+                                <option value="#34c759" ${d.color === '#34c759' ? 'selected' : ''}>Grün</option>
+                                <option value="#ff9500" ${d.color === '#ff9500' ? 'selected' : ''}>Orange</option>
+                                <option value="#ff3b30" ${d.color === '#ff3b30' ? 'selected' : ''}>Rot</option>
+                            </select>
+                        </td>
+                        <td><button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="deleteDiscountPreset(${d.id})">Löschen</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        window.openDiscountModal = function() {
+            const list = document.getElementById('discount-modal-list');
+            list.innerHTML = '';
+
+            if (selectedDiscount) {
+                list.innerHTML += `
+                    <button class="btn btn-danger" style="width: 100%; padding: 12px;" onclick="applyDiscountChoice(null)">
+                        ✕ Aktiven Rabatt (${selectedDiscount.name}) entfernen
+                    </button>
+                `;
+            }
+
+            if (discountPresets.length === 0) {
+                list.innerHTML += '<p style="text-align:center; color: var(--text-secondary);">Keine Rabatte im Adminbereich hinterlegt.</p>';
+            } else {
+                discountPresets.forEach(d => {
+                    const isCurrent = selectedDiscount && selectedDiscount.id === d.id;
+                    list.innerHTML += `
+                        <button class="btn" style="width: 100%; padding: 14px; font-size: 1rem; background: ${d.color || '#af52de'}; ${isCurrent ? 'box-shadow: 0 0 0 3px #1d1d1f;' : ''}" onclick="applyDiscountChoice(${d.id})">
+                            ${d.name} (${d.percent}% Rabatt) ${isCurrent ? '✓' : ''}
+                        </button>
+                    `;
+                });
+            }
+
+            openModal('discount-modal');
+        }
+
+        window.applyDiscountChoice = function(discountId) {
+            if (discountId === null) {
+                selectedDiscount = null;
+            } else {
+                const found = discountPresets.find(d => d.id === discountId);
+                selectedDiscount = found ? { ...found } : null;
+            }
+            closeModal('discount-modal');
+            updateCartUI();
+        }
+
+        // ==========================================
+        // BELEG & FIRMENDATEN (KLEINBETRAGSRECHNUNG)
+        // ==========================================
+        function populateCompanySettingsForm() {
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el && document.activeElement !== el) el.value = val !== undefined ? val : '';
+            };
+            setVal('comp-name', companySettings.companyName);
+            setVal('comp-street', companySettings.companyStreet);
+            setVal('comp-city', companySettings.companyCity);
+            setVal('comp-tax', companySettings.taxNumber);
+            setVal('comp-tax-note', companySettings.taxNote);
+            setVal('comp-receipt-prefix', companySettings.receiptPrefix);
+            setVal('comp-receipt-counter', companySettings.receiptCounter);
+            setVal('comp-footer', companySettings.receiptFooter);
+        }
+
+        window.saveCompanySettings = function() {
+            companySettings.companyName = document.getElementById('comp-name').value.trim() || "Abi 2027 GbR";
+            companySettings.companyStreet = document.getElementById('comp-street').value.trim();
+            companySettings.companyCity = document.getElementById('comp-city').value.trim();
+            companySettings.taxNumber = document.getElementById('comp-tax').value.trim();
+            companySettings.taxNote = document.getElementById('comp-tax-note').value.trim() || "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.";
+            companySettings.receiptPrefix = document.getElementById('comp-receipt-prefix').value.trim() || "RE-2026-";
+            companySettings.receiptCounter = Math.max(1, parseInt(document.getElementById('comp-receipt-counter').value) || 1);
+            companySettings.receiptFooter = document.getElementById('comp-footer').value.trim();
+
+            window.saveDataToCloud();
+            alert("Beleg- und Firmendaten erfolgreich gespeichert!");
+        }
+
+        function buildReceiptHTML(order, comp) {
+            const itemsHtml = order.items.map(i => `
+                <div class="receipt-line">
+                    <span>${i.qty}x ${i.name}</span>
+                    <span>${(i.price * i.qty).toFixed(2)} €</span>
+                </div>
+                <div style="font-size: 0.72rem; color: #86868b; margin-bottom: 4px;">
+                    Einzelpreis: ${i.price.toFixed(2)} €
+                </div>
+            `).join('');
+
+            const subtotal = order.subtotal !== undefined ? order.subtotal : order.total;
+            let discountHtml = '';
+            if (order.badge && subtotal > order.total) {
+                const diff = subtotal - order.total;
+                discountHtml = `
+                    <div class="receipt-line" style="font-size: 0.8rem;">
+                        <span>Zwischensumme:</span>
+                        <span>${subtotal.toFixed(2)} €</span>
+                    </div>
+                    <div class="receipt-line" style="font-size: 0.8rem; color: #af52de;">
+                        <span>Rabatt (${order.badge}):</span>
+                        <span>-${diff.toFixed(2)} €</span>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="receipt-center">
+                    <h4>${comp.companyName}</h4>
+                    <div>${comp.companyStreet}</div>
+                    <div>${comp.companyCity}</div>
+                    <div style="font-size: 0.76rem; margin-top: 3px;">Steuernummer: ${comp.taxNumber}</div>
+                </div>
+                <div class="receipt-divider"></div>
+                <div style="font-size: 0.78rem;">
+                    <div class="receipt-line"><span><strong>Rechnungs-Nr.:</strong></span><span>${order.receiptNumber || 'RE-0001'}</span></div>
+                    <div class="receipt-line"><span><strong>Ausstellungsdatum:</strong></span><span>${order.time}</span></div>
+                    <div class="receipt-line"><span><strong>Leistungszeitpunkt:</strong></span><span>${order.time}</span></div>
+                </div>
+                <div class="receipt-divider"></div>
+                <div>${itemsHtml}</div>
+                <div class="receipt-divider"></div>
+                ${discountHtml}
+                <div class="receipt-line" style="font-weight: 700; font-size: 1rem; margin-top: 4px;">
+                    <span>Gesamtbetrag (Brutto):</span>
+                    <span>${order.total.toFixed(2)} €</span>
+                </div>
+                <div style="font-size: 0.74rem; color: #48484a; margin-top: 8px; text-align: center;">
+                    ${comp.taxNote}
+                </div>
+                <div class="receipt-divider"></div>
+                <div class="receipt-center" style="font-size: 0.78rem;">
+                    ${comp.receiptFooter || ''}
+                </div>
+            `;
+        }
+
+        window.openLastOrderReceipt = function() {
+            if (salesJournal.length === 0) {
+                alert("Es liegt noch keine Bestellung vor.");
+                return;
+            }
+            openReceiptForOrder(salesJournal[0]);
+        }
+
+        window.openReceiptForOrder = function(order) {
+            currentViewedReceiptOrder = { order, company: companySettings };
+            document.getElementById('receipt-preview-box').innerHTML = buildReceiptHTML(order, companySettings);
+
+            const qrContainer = document.getElementById('receipt-qrcode');
+            qrContainer.innerHTML = '';
+
+            const compactPayload = {
+                nr: order.receiptNumber || "RE-0001",
+                dt: order.time,
+                it: order.items.map(i => [i.qty, i.name, Number(i.price.toFixed(2))]),
+                sub: Number((order.subtotal !== undefined ? order.subtotal : order.total).toFixed(2)),
+                tot: Number(order.total.toFixed(2)),
+                bg: order.badge || "",
+                cn: companySettings.companyName,
+                cs: companySettings.companyStreet,
+                cc: companySettings.companyCity,
+                tn: companySettings.taxNumber,
+                nt: companySettings.taxNote,
+                ft: companySettings.receiptFooter
+            };
+
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(compactPayload))));
+            const baseUrl = window.location.origin + window.location.pathname;
+            const receiptUrl = `${baseUrl}?beleg=${encodeURIComponent(encoded)}`;
+
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrContainer, {
+                    text: receiptUrl,
+                    width: 175,
+                    height: 175,
+                    colorDark: "#1d1d1f",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } else {
+                qrContainer.innerHTML = '<span style="font-size:0.8rem; color:var(--danger);">QR-Generator lädt noch...</span>';
+            }
+
+            openModal('receipt-modal');
+        }
+
+        window.downloadReceiptImage = function(isPublicMode) {
+            if (!currentViewedReceiptOrder) return;
+            const { order, company } = currentViewedReceiptOrder;
+
+            const canvas = document.createElement('canvas');
+            const scale = 2;
+            const width = 420;
+            const estimatedHeight = 420 + (order.items.length * 42);
+            canvas.width = width * scale;
+            canvas.height = estimatedHeight * scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, estimatedHeight);
+
+            ctx.fillStyle = '#1d1d1f';
+            ctx.textAlign = 'center';
+            let y = 36;
+
+            ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText(company.companyName || 'Kassenbeleg', width / 2, y);
+            y += 22;
+
+            ctx.font = '13px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText(company.companyStreet || '', width / 2, y);
+            y += 18;
+            ctx.fillText(company.companyCity || '', width / 2, y);
+            y += 18;
+            ctx.fillText(`Steuernummer: ${company.taxNumber || ''}`, width / 2, y);
+            y += 20;
+
+            const drawDashedLine = (yPos) => {
+                ctx.save();
+                ctx.setLineDash([5, 4]);
+                ctx.strokeStyle = '#86868b';
+                ctx.beginPath();
+                ctx.moveTo(24, yPos);
+                ctx.lineTo(width - 24, yPos);
+                ctx.stroke();
+                ctx.restore();
+            };
+
+            drawDashedLine(y);
+            y += 22;
+
+            ctx.textAlign = 'left';
+            ctx.font = '12px Menlo, Monaco, monospace';
+            ctx.fillText(`Rechnungs-Nr.:      ${order.receiptNumber || 'RE-0001'}`, 24, y);
+            y += 18;
+            ctx.fillText(`Ausstellungsdatum:  ${order.time}`, 24, y);
+            y += 18;
+            ctx.fillText(`Leistungszeitpunkt: ${order.time}`, 24, y);
+            y += 18;
+
+            drawDashedLine(y);
+            y += 24;
+
+            order.items.forEach(item => {
+                ctx.textAlign = 'left';
+                ctx.font = 'bold 13px Menlo, Monaco, monospace';
+                ctx.fillText(`${item.qty}x ${item.name}`, 24, y);
+                ctx.textAlign = 'right';
+                ctx.fillText(`${(item.price * item.qty).toFixed(2)} €`, width - 24, y);
+                y += 17;
+
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#6e6e73';
+                ctx.font = '11px Menlo, Monaco, monospace';
+                ctx.fillText(`Einzelpreis: ${item.price.toFixed(2)} €`, 24, y);
+                ctx.fillStyle = '#1d1d1f';
+                y += 22;
+            });
+
+            drawDashedLine(y);
+            y += 24;
+
+            const subtotal = order.subtotal !== undefined ? order.subtotal : order.total;
+            if (order.badge && subtotal > order.total) {
+                ctx.textAlign = 'left';
+                ctx.font = '12px Menlo, Monaco, monospace';
+                ctx.fillText('Zwischensumme:', 24, y);
+                ctx.textAlign = 'right';
+                ctx.fillText(`${subtotal.toFixed(2)} €`, width - 24, y);
+                y += 18;
+
+                ctx.textAlign = 'left';
+                ctx.fillText(`Rabatt (${order.badge}):`, 24, y);
+                ctx.textAlign = 'right';
+                ctx.fillText(`-${(subtotal - order.total).toFixed(2)} €`, width - 24, y);
+                y += 22;
+            }
+
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText('Gesamtbetrag (Brutto):', 24, y);
+            ctx.textAlign = 'right';
+            ctx.fillText(`${order.total.toFixed(2)} €`, width - 24, y);
+            y += 26;
+
+            ctx.textAlign = 'center';
+            ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillStyle = '#48484a';
+            ctx.fillText(company.taxNote || 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.', width / 2, y);
+            y += 20;
+
+            drawDashedLine(y);
+            y += 22;
+
+            ctx.fillStyle = '#1d1d1f';
+            ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText(company.receiptFooter || '', width / 2, y);
+
+            const link = document.createElement('a');
+            link.download = `Beleg_${order.receiptNumber || 'AbiBar'}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // ==========================================
+        // EXCEL EXPORT (.XLSX)
+        // ==========================================
+        window.exportToExcel = function() {
+            if (salesJournal.length === 0) {
+                alert("Keine Verkaufsdaten im Kassenbuch vorhanden.");
+                return;
+            }
+
+            if (typeof XLSX === 'undefined') {
+                let csv = "\uFEFFBeleg-Nr.;Datum & Uhrzeit;Kellner;Bestellung;Vermerk;Happy Hour;Status;Betrag (€)\n";
+                salesJournal.forEach(e => {
+                    const status = e.storniert ? 'Storniert' : 'Bezahlt';
+                    const betrag = e.storniert ? '0,00' : e.total.toFixed(2).replace('.', ',');
+                    csv += `"${e.receiptNumber || '-'}";"${e.time}";"${e.waiter}";"${e.items.map(i => i.qty + 'x ' + i.name).join(' | ')}";"${e.badge || 'Regulär'}";"${e.happyHourActive ? 'Ja' : 'Nein'}";"${status}";"${betrag}"\r\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "Kassenbuch.csv";
+                link.click();
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            const journalRows = [
+                ["Beleg-Nr.", "Datum & Uhrzeit", "Kellner", "Bestellung", "Rabatt / Vermerk", "Happy Hour", "Status", "Betrag (€)"]
+            ];
+
+            let validSum = 0;
+            salesJournal.forEach(e => {
+                const isStorno = !!e.storniert;
+                const amount = isStorno ? 0 : Number(e.total.toFixed(2));
+                if (!isStorno) validSum += amount;
+
+                journalRows.push([
+                    e.receiptNumber || "-",
+                    e.time,
+                    e.waiter,
+                    e.items.map(i => `${i.qty}x ${i.name} (${(i.price * i.qty).toFixed(2)} €)`).join(", "),
+                    e.badge || "Regulär",
+                    e.happyHourActive ? "Ja" : "Nein",
+                    isStorno ? "Storniert" : "Bezahlt",
+                    amount
+                ]);
+            });
+
+            journalRows.push([]);
+            journalRows.push(["", "", "", "", "", "", "GESAMTUMSATZ:", Number(validSum.toFixed(2))]);
+
+            const wsJournal = XLSX.utils.aoa_to_sheet(journalRows);
+            wsJournal['!cols'] = [
+                { wch: 16 },
+                { wch: 24 },
+                { wch: 22 },
+                { wch: 48 },
+                { wch: 18 },
+                { wch: 13 },
+                { wch: 12 },
+                { wch: 16 }
+            ];
+
+            for (let r = 1; r < journalRows.length; r++) {
+                const cellRef = XLSX.utils.encode_cell({ r: r, c: 7 });
+                if (wsJournal[cellRef] && typeof wsJournal[cellRef].v === 'number') {
+                    wsJournal[cellRef].z = '#,##0.00 "€"';
+                }
+            }
+
+            XLSX.utils.book_append_sheet(wb, wsJournal, "Kassenbuch");
+
+            const statsRows = [
+                ["Produkt", "Kategorie", "Verkaufspreis (€)", "Verkaufte Menge", "Aktueller Lagerbestand", "Lager-Modus"]
+            ];
+            products.forEach(p => {
+                statsRows.push([
+                    p.name,
+                    p.category || "Allgemein",
+                    Number(p.price.toFixed(2)),
+                    itemCounts[p.name] || 0,
+                    stockData[p.id] !== undefined ? stockData[p.id] : 50,
+                    p.stockMode === 'manual' ? 'Manuell' : 'Automatisch'
+                ]);
+            });
+
+            const wsStats = XLSX.utils.aoa_to_sheet(statsRows);
+            wsStats['!cols'] = [
+                { wch: 24 },
+                { wch: 18 },
+                { wch: 18 },
+                { wch: 18 },
+                { wch: 22 },
+                { wch: 16 }
+            ];
+            for (let r = 1; r < statsRows.length; r++) {
+                const priceRef = XLSX.utils.encode_cell({ r: r, c: 2 });
+                if (wsStats[priceRef]) wsStats[priceRef].z = '#,##0.00 "€"';
+            }
+
+            XLSX.utils.book_append_sheet(wb, wsStats, "Statistik & Lager");
+
+            const dateStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Kassenbuch_AbiBar_${dateStr}.xlsx`);
+        }
+
+        // ==========================================
+        // KELLNER ANZEIGE (Feste Accounts)
+        // ==========================================
+        function renderWaitersTable() {
+            const tbody = document.getElementById('waiters-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            for (const [id, data] of Object.entries(authorizedWaiters)) {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${data.name}</strong> (ID: ${id})</td>
+                        <td>${data.isAdmin ? '<span style="color: var(--accent); font-weight: 600;">Administrator</span>' : '<span style="color: var(--text-secondary);">Kellner</span>'}</td>
+                    </tr>`;
+            }
+        }
+
+        // ==========================================
+        // HAPPY HOUR LOGIK
+        // ==========================================
+        window.toggleGlobalHappyHour = function(checked) {
+            isHappyHour = checked;
+            if (checked && Object.keys(activeDiscounts).length === 0) {
+                products.forEach(p => activeDiscounts[p.id] = 1.00);
+            }
+            window.saveDataToCloud();
+            updateHappyHourHeaderStatus();
+            updateCartUI();
+            renderPosGrid();
+        }
+
+        window.updateManualUI = function() {
+            const isGlobal = document.querySelector('input[name="manual_hh_mode"]:checked').value === 'global';
+            document.getElementById('manual-global-discount').disabled = !isGlobal;
+            document.querySelectorAll('.manual-ind-input').forEach(input => input.disabled = isGlobal);
+        }
+
+        function renderManualHHProducts() {
+            const tbody = document.getElementById('manual-hh-products');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                const savedVal = individualDiscountsValues[p.id] !== undefined ? individualDiscountsValues[p.id] : 1.00;
+                tbody.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" class="manual-cb" value="${p.id}" checked style="width:18px; height:18px; cursor:pointer;"></td>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.price.toFixed(2)} €</td>
+                        <td><input type="number" class="manual-ind-input login-input" data-id="${p.id}" value="${savedVal}" step="0.5" min="0.1" style="width: 80px; padding: 6px; margin: 0;" disabled></td>
+                    </tr>
+                `;
+            });
+        }
+
+        window.startManualHH = function() {
+            const isGlobal = document.querySelector('input[name="manual_hh_mode"]:checked').value === 'global';
+            const globalDisc = parseFloat(document.getElementById('manual-global-discount').value) || 0;
+            activeDiscounts = {};
+            individualDiscountsValues = {};
+
+            document.querySelectorAll('.manual-cb:checked').forEach(cb => {
+                const id = parseInt(cb.value);
+                if (isGlobal) {
+                    activeDiscounts[id] = globalDisc;
+                } else {
+                    const indInput = document.querySelector(`.manual-ind-input[data-id="${id}"]`);
+                    const val = parseFloat(indInput.value) || 0;
+                    activeDiscounts[id] = val;
+                    individualDiscountsValues[id] = val;
+                }
+            });
+
+            if (Object.keys(activeDiscounts).length === 0) { alert("Du musst mindestens ein Produkt auswählen!"); return; }
+            isHappyHour = true;
+            document.getElementById('happy-hour-main-toggle').checked = true;
+            window.saveDataToCloud();
+            updateHappyHourHeaderStatus();
+            alert("Happy Hour Werte gespeichert und aktiv geschaltet!");
+        }
+
+        window.stopHH = function() {
+            isHappyHour = false;
+            activeDiscounts = {};
+            individualDiscountsValues = {};
+            document.getElementById('happy-hour-main-toggle').checked = false;
+            window.saveDataToCloud();
+            updateHappyHourHeaderStatus();
+            renderManualHHProducts();
+            alert("Happy Hour zurückgesetzt und beendet.");
+        }
+
+        window.updateSchedUI = function() {
+            const isGlobal = document.querySelector('input[name="sched_hh_mode"]:checked').value === 'global';
+            document.getElementById('sched-global-discount').disabled = !isGlobal;
+            document.querySelectorAll('.sched-ind-input').forEach(input => input.disabled = isGlobal);
+        }
+
+        function renderSchedHHProducts() {
+            const tbody = document.getElementById('sched-hh-products');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" class="sched-cb" value="${p.id}" checked style="width:18px; height:18px; cursor:pointer;"></td>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.price.toFixed(2)} €</td>
+                        <td><input type="number" class="sched-ind-input login-input" data-id="${p.id}" value="1.00" step="0.5" min="0.1" style="width: 80px; padding: 6px; margin: 0;" disabled></td>
+                    </tr>
+                `;
+            });
+        }
+
+        window.addScheduleHH = function() {
+            const day = document.getElementById('sched-day').value.trim();
+            const start = document.getElementById('sched-start').value;
+            const end = document.getElementById('sched-end').value;
+            if (!day || !start || !end) { alert("Bitte Tag, Start- und Endzeit angeben."); return; }
+
+            const isGlobal = document.querySelector('input[name="sched_hh_mode"]:checked').value === 'global';
+            const globalDisc = parseFloat(document.getElementById('sched-global-discount').value) || 0;
+            
+            let storedDiscounts = {};
+            document.querySelectorAll('.sched-cb:checked').forEach(cb => {
+                const id = parseInt(cb.value);
+                if (isGlobal) storedDiscounts[id] = globalDisc;
+                else {
+                    const indInput = document.querySelector(`.sched-ind-input[data-id="${id}"]`);
+                    storedDiscounts[id] = parseFloat(indInput.value) || 0;
+                }
+            });
+
+            if (Object.keys(storedDiscounts).length === 0) { alert("Du musst mindestens ein Produkt auswählen!"); return; }
+
+            happyHourSchedules.push({ id: Date.now(), day: day, start: start, end: end, mode: isGlobal ? 'Allgemein' : 'Individuell', discounts: storedDiscounts });
+            document.getElementById('sched-day').value = '';
+            document.getElementById('sched-start').value = '';
+            document.getElementById('sched-end').value = '';
+            window.saveDataToCloud();
+            alert("Zeitplan erfolgreich gespeichert!");
+        }
+
+        function renderSchedulesList() {
+            const tbody = document.getElementById('hh-schedule-list');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (happyHourSchedules.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Zeitpläne hinterlegt.</td></tr>'; return; }
+            happyHourSchedules.forEach(s => {
+                tbody.innerHTML += `<tr><td><strong>${s.day}</strong></td><td>${s.start} - ${s.end} Uhr</td><td>${s.mode}</td><td><button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.8rem;" onclick="window.removeScheduleHH(${s.id})">Löschen</button></td></tr>`;
+            });
+        }
+
+        window.removeScheduleHH = function(id) { happyHourSchedules = happyHourSchedules.filter(s => s.id !== id); window.saveDataToCloud(); }
+
+        // ==========================================
+        // KASSEN / POS LOGIK (Ohne Lageranzeige unter den Buttons)
+        // ==========================================
+        function getEffectivePrice(product) {
+            if (isHappyHour && activeDiscounts[product.id]) {
+                const discount = activeDiscounts[product.id];
+                return Math.max(0.00, product.price - discount); 
+            }
+            return product.price;
+        }
+
+        function renderPosGrid() {
+            const container = document.getElementById('pos-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            categories.forEach(cat => {
+                const catProducts = products.filter(p => (p.category || categories[0]) === cat);
+                if (catProducts.length === 0) return;
+
+                const group = document.createElement('div');
+                group.className = 'category-group';
+                group.innerHTML = `<div class="category-title">${cat}</div>`;
+                const grid = document.createElement('div');
+                grid.className = 'products-grid';
+
+                catProducts.forEach(p => {
+                    const stock = stockData[p.id] !== undefined ? stockData[p.id] : 50;
+                    const isSoldOut = (p.stockMode !== 'manual' && stock <= 0);
+                    const effectivePrice = getEffectivePrice(p);
+                    const isDiscounted = (effectivePrice < p.price);
+
+                    const btn = document.createElement('div');
+                    let btnClass = 'product-btn';
+                    if (isSoldOut || !kasseActive) btnClass += ' sold-out';
+
+                    btn.className = btnClass;
+                    if (!isSoldOut && kasseActive) btn.onclick = () => window.addToCart(p.id);
+                    
+                    let priceHtml = `<span class="product-price">${effectivePrice.toFixed(2)} €</span>`;
+                    if (isDiscounted) {
+                        priceHtml = `<span class="product-price discounted"><span class="old-price">${p.price.toFixed(2)}</span>${effectivePrice.toFixed(2)} €</span>`;
+                    }
+
+                    btn.innerHTML = `<span class="product-name">${p.name}</span>${priceHtml}`;
+                    grid.appendChild(btn);
+                });
+
+                group.appendChild(grid);
+                container.appendChild(group);
+            });
+        }
+
+        window.setMultiplier = function(val, btnElement) {
+            currentMultiplier = val;
+            document.querySelectorAll('.multiplier-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        window.addToCart = function(productId) {
+            if (!kasseActive) return;
+            const product = products.find(p => p.id === productId);
+            const effectivePrice = getEffectivePrice(product);
+            const currentStock = stockData[productId] !== undefined ? stockData[productId] : 50;
+            const qtyToAdd = currentMultiplier;
+
+            const cartItem = cart.find(item => item.id === productId && item.price === effectivePrice);
+            const currentQtyInCart = cartItem ? cartItem.qty : 0;
+
+            if (product.stockMode !== 'manual' && currentQtyInCart + qtyToAdd > currentStock) {
+                alert(`Nicht genügend Bestand! (Nur noch ${currentStock} da, Warenkorb: ${currentQtyInCart})`);
+                return;
+            }
+
+            if (cartItem) cartItem.qty += qtyToAdd;
+            else cart.push({ ...product, price: effectivePrice, qty: qtyToAdd });
+            
+            currentMultiplier = 1;
+            document.querySelectorAll('.multiplier-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.multiplier-btn')[0].classList.add('active');
+            updateCartUI();
+        }
+
+        window.removeFromCart = function(productId) { cart = cart.filter(item => item.id !== productId); updateCartUI(); }
+        
+        window.clearCart = function() { 
+            cart = []; 
+            selectedDiscount = null;
+            updateCartUI(); 
+        }
+
+        function updateCartUI() {
+            const list = document.getElementById('cart-list');
+            const payBtn = document.getElementById('pay-btn');
+            const btnDiscount = document.getElementById('btn-discount-modal');
+            
+            list.innerHTML = '';
+            
+            if (cart.length === 0) {
+                list.innerHTML = '<li style="text-align: center; color: var(--text-secondary); padding: 20px;">Warenkorb ist leer</li>';
+                document.getElementById('total-price').innerText = '0,00 €';
+                payBtn.disabled = true;
+                btnDiscount.disabled = true;
+                btnDiscount.innerText = '🏷️ Rabatt auswählen';
+                btnDiscount.style.background = 'var(--purple)';
+                return;
+            }
+            
+            let subtotal = 0;
+            cart.forEach(item => {
+                subtotal += item.price * item.qty;
+                list.innerHTML += `<li class="cart-item"><span>${item.qty}x ${item.name}</span><span>${(item.price * item.qty).toFixed(2)} € <button onclick="window.removeFromCart(${item.id})">X</button></span></li>`;
+            });
+            
+            const factor = selectedDiscount ? Math.max(0, 1 - (selectedDiscount.percent / 100)) : 1.0;
+            const finalTotal = subtotal * factor;
+            let badgeHtml = '';
+            if (selectedDiscount) {
+                badgeHtml = ` <span style="background: #f3e8ff; color: ${selectedDiscount.color || '#7c3aed'}; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; margin-left: 8px;">${selectedDiscount.name} (-${selectedDiscount.percent}%)</span>`;
+                btnDiscount.innerText = `🏷️ ${selectedDiscount.name} (-${selectedDiscount.percent}%)`;
+                btnDiscount.style.background = selectedDiscount.color || 'var(--purple)';
+            } else {
+                btnDiscount.innerText = '🏷️ Rabatt auswählen';
+                btnDiscount.style.background = 'var(--purple)';
+            }
+            
+            document.getElementById('total-price').innerHTML = finalTotal.toFixed(2) + ' €' + badgeHtml;
+            
+            payBtn.disabled = false;
+            btnDiscount.disabled = false;
+            window.calculateChange();
+        }
+
+        // ==========================================
+        // LOGIN / LOGOUT / CHECKOUT
+        // ==========================================
+        window.performLogin = function() {
+            const id = document.getElementById('login-id').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+
+            const waiter = authorizedWaiters[id];
+            if (!waiter || waiter.pass !== pass) {
+                alert("Fehler: Unbekannte ID oder falsches Passwort!");
+                return;
+            }
+
+            currentWaiter = { name: waiter.name, id: id, isAdmin: waiter.isAdmin };
+            document.getElementById('current-waiter-display').innerText = `${currentWaiter.name} (${currentWaiter.id})`;
+            document.getElementById('login-overlay').style.display = 'none';
+
+            if (currentWaiter.isAdmin) {
+                document.getElementById('admin-tab-btn').style.display = 'block';
+            } else {
+                document.getElementById('admin-tab-btn').style.display = 'none';
+                switchView('pos');
+            }
+
+            const now = new Date();
+            loginLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Angemeldet' });
+            window.saveDataToCloud();
+        }
+
+        window.performLogout = function() {
+            if (!currentWaiter) return;
+            const now = new Date();
+            loginLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Abgemeldet' });
+            window.saveDataToCloud();
+
+            currentWaiter = null;
+            stockAdminUnlocked = false;
+            document.getElementById('login-id').value = '';
+            document.getElementById('login-pass').value = '';
+            document.getElementById('login-overlay').style.display = 'flex';
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-datetime').innerText = `${now.toLocaleDateString()}, ${now.toLocaleTimeString()}`;
+        }
+
+        window.toggleChangeCalculator = function() {
+            const box = document.getElementById('change-box');
+            if (document.getElementById('change-toggle').checked) box.classList.add('active');
+            else { box.classList.remove('active'); document.getElementById('cash-given-input').value = ''; document.getElementById('change-amount').innerText = '0,00 €'; }
+        }
+
+        window.addCash = function(amount) {
+            const input = document.getElementById('cash-given-input');
+            input.value = ((parseFloat(input.value) || 0) + amount).toFixed(2);
+            window.calculateChange();
+        }
+
+        window.setExactCash = function() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const factor = selectedDiscount ? Math.max(0, 1 - (selectedDiscount.percent / 100)) : 1.0;
+            const total = subtotal * factor;
+            document.getElementById('cash-given-input').value = total.toFixed(2);
+            window.calculateChange();
+        }
+
+        window.calculateChange = function() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const factor = selectedDiscount ? Math.max(0, 1 - (selectedDiscount.percent / 100)) : 1.0;
+            const total = subtotal * factor;
+
+            const given = parseFloat(document.getElementById('cash-given-input').value) || 0;
+            const change = given - total;
+            const changeEl = document.getElementById('change-amount');
+            
+            if (change >= 0) { changeEl.innerText = change.toFixed(2) + ' €'; changeEl.style.color = 'var(--success)'; } 
+            else { changeEl.innerText = 'Zu wenig!'; changeEl.style.color = 'var(--danger)'; }
+        }
+
+        window.checkout = function() { 
+            const currentCartBackup = JSON.parse(JSON.stringify(cart));
+            const subtotal = currentCartBackup.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const factor = selectedDiscount ? Math.max(0, 1 - (selectedDiscount.percent / 100)) : 1.0;
+            const total = subtotal * factor;
+            const badgeType = selectedDiscount ? `${selectedDiscount.name} (-${selectedDiscount.percent}%)` : '';
+            
+            totalRevenue += total;
+            
+            cart = [];
+            selectedDiscount = null;
+            updateCartUI();
+
+            document.getElementById('cash-given-input').value = '';
+            document.getElementById('change-amount').innerText = '0,00 €';
+
+            currentCartBackup.forEach(item => {
+                const prod = products.find(p => p.id === item.id);
+                if (!prod || prod.stockMode !== 'manual') {
+                    stockData[item.id] = Math.max(0, (stockData[item.id] !== undefined ? stockData[item.id] : 50) - item.qty);
+                }
+                itemCounts[item.name] = (itemCounts[item.name] || 0) + item.qty;
+            });
+
+            const currentNum = companySettings.receiptCounter || 1;
+            const paddedNum = String(currentNum).padStart(4, '0');
+            const receiptNumber = `${companySettings.receiptPrefix || 'RE-2026-'}${paddedNum}`;
+            companySettings.receiptCounter = currentNum + 1;
+
+            const now = new Date();
+            const newOrder = {
+                id: Date.now(),
+                receiptNumber: receiptNumber,
+                time: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(),
+                waiter: currentWaiter ? `${currentWaiter.name} (${currentWaiter.id})` : 'Unbekannt',
+                items: currentCartBackup,
+                subtotal: subtotal,
+                total: total,
+                badge: badgeType,
+                happyHourActive: isHappyHour,
+                storniert: false
+            };
+
+            salesJournal.unshift(newOrder);
+            document.getElementById('btn-create-receipt').disabled = false;
+
+            window.saveDataToCloud();
+            alert(`Bezahlt! Summe: ${total.toFixed(2)} € ${badgeType ? '(' + badgeType + ')' : ''}\nBeleg-Nr.: ${receiptNumber}`);
+        }
+
+        window.stornoEntry = function(entryId) {
+            const entry = salesJournal.find(e => e.id === entryId);
+            if (!entry || entry.storniert) return;
+            if (!confirm("Möchtest du diese Bestellung wirklich stornieren? Betrag wird abgezogen und automatische Artikel wandern ins Lager zurück.")) return;
+
+            totalRevenue = Math.max(0, totalRevenue - entry.total);
+            entry.storniert = true;
+
+            const now = new Date();
+            const actor = currentWaiter ? currentWaiter.name : 'Admin';
+            entry.items.forEach(item => {
+                const prod = products.find(p => p.id === item.id);
+                if (!prod || prod.stockMode !== 'manual') {
+                    stockData[item.id] = (stockData[item.id] !== undefined ? stockData[item.id] : 50) + item.qty;
+                    stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `+${item.qty} Stück (Storno durch ${actor})` });
+                } else {
+                    stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `Storno durch ${actor} (Manueller Bestand unverändert)` });
+                }
+                itemCounts[item.name] = Math.max(0, (itemCounts[item.name] || 0) - item.qty);
+            });
+            window.saveDataToCloud();
+            alert("Bestellung erfolgreich storniert!");
+        }
+
+        window.deleteJournalEntry = function(entryId) {
+            if (!currentWaiter || !currentWaiter.isAdmin) {
+                alert("Nur Administratoren können Kassenbucheinträge löschen!");
+                return;
+            }
+            const entry = salesJournal.find(e => e.id === entryId);
+            if (!entry) return;
+
+            if (confirm("Möchtest du diesen Kassenbucheintrag komplett löschen? (Der Betrag wird vom Umsatz abgezogen und automatische Artikel wandern ins Lager zurück).")) {
+                if (!entry.storniert) {
+                    totalRevenue = Math.max(0, totalRevenue - entry.total);
+                    entry.items.forEach(item => {
+                        const prod = products.find(p => p.id === item.id);
+                        if (!prod || prod.stockMode !== 'manual') {
+                            stockData[item.id] = (stockData[item.id] !== undefined ? stockData[item.id] : 50) + item.qty;
+                        }
+                        itemCounts[item.name] = Math.max(0, (itemCounts[item.name] || 0) - item.qty);
+                    });
+                }
+                salesJournal = salesJournal.filter(e => e.id !== entryId);
+                window.saveDataToCloud();
+                alert("Kassenbucheintrag gelöscht und Umsatz angepasst.");
+            }
+        }
+
+        // ==========================================
+        // PRODUKTE & KATEGORIEN BEARBEITEN (MIT LIVE-SYNC-FIX)
+        // ==========================================
+        window.addCategory = function() {
+            const catName = document.getElementById('new-cat-name').value.trim();
+            if (!catName || categories.includes(catName)) { alert("Ungültig oder vorhanden."); return; }
+            categories.push(catName);
+            document.getElementById('new-cat-name').value = '';
+            renderAdminProductsGrid();
+            window.saveDataToCloud();
+        }
+
+        window.addNewProduct = function() {
+            const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+            products.push({ id: newId, name: "Neues Produkt", price: 2.00, category: categories[0] || "Allgemein", stockMode: "auto" });
+            stockData[newId] = 50;
+            renderAdminProductsGrid();
+            renderPosGrid();
+            window.saveDataToCloud();
+        }
+
+        window.deleteProduct = function(id) {
+            if (confirm("Produkt wirklich löschen?")) {
+                products = products.filter(p => p.id !== id);
+                renderAdminProductsGrid();
+                renderPosGrid();
+                window.saveDataToCloud();
+            }
+        }
+
+        window.updateProductField = function(id, field, value, immediate = true) {
+            const p = products.find(prod => prod.id === id);
+            if (p) {
+                if (field === 'price') p.price = parseFloat(String(value).replace(',', '.')) || 0;
+                else if (field === 'name') p.name = value;
+                else if (field === 'category') p.category = value;
+                else if (field === 'stockMode') p.stockMode = value;
+
+                clearTimeout(productSaveTimer);
+                if (immediate) {
+                    window.saveDataToCloud();
+                } else {
+                    productSaveTimer = setTimeout(() => window.saveDataToCloud(), 500);
+                }
+            }
+        }
+
+        function renderAdminProductsGrid() {
+            const grid = document.getElementById('admin-products-grid');
+            if (!grid) return;
+            // Eingabefelder nicht neu aufbauen, während gerade darin getippt wird
+            if (grid.contains(document.activeElement) && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+                return;
+            }
+            grid.innerHTML = '';
+            products.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'admin-product-card';
+                let catOptions = categories.map(c => `<option value="${c}" ${c === (p.category || categories[0]) ? 'selected' : ''}>${c}</option>`).join('');
+                const isManual = p.stockMode === 'manual';
+                card.innerHTML = `
+                    <button class="admin-delete-badge" onclick="window.deleteProduct(${p.id})">×</button>
+                    <label style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: -6px;">Produktname</label>
+                    <input type="text" value="${p.name}" oninput="window.updateProductField(${p.id}, 'name', this.value, false)" onchange="window.updateProductField(${p.id}, 'name', this.value, true)" placeholder="Produktname">
+                    <label style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: -6px;">Preis (€)</label>
+                    <input type="number" value="${p.price.toFixed(2)}" step="0.5" oninput="window.updateProductField(${p.id}, 'price', this.value, false)" onchange="window.updateProductField(${p.id}, 'price', this.value, true)" placeholder="Preis (€)">
+                    <label style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: -6px;">Kategorie</label>
+                    <select onchange="window.updateProductField(${p.id}, 'category', this.value, true)">${catOptions}</select>
+                    <label style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: -6px;">Lager-Änderung</label>
+                    <select onchange="window.updateProductField(${p.id}, 'stockMode', this.value, true)" style="border-color: ${isManual ? 'var(--warning)' : '#d1d1d6'}; font-weight: 600;">
+                        <option value="auto" ${!isManual ? 'selected' : ''}>⚡ Automatisch nach Bestellung</option>
+                        <option value="manual" ${isManual ? 'selected' : ''}>✋ Manuell durch Kellner</option>
+                    </select>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderStockTable() {
+            const tbody = document.getElementById('stock-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                const stock = stockData[p.id] !== undefined ? stockData[p.id] : 50;
+                const tr = document.createElement('tr');
+                if (stock < 5) tr.style.backgroundColor = '#fff5f5';
+
+                let stockInputHtml = `<span>${stock}</span>`;
+                if (stockAdminUnlocked) {
+                    stockInputHtml = `<input type="number" class="login-input" value="${stock}" style="width:75px; padding:6px; margin:0; text-align:center;" onchange="window.updateStockValue(${p.id}, this.value)">`;
+                }
+
+                const modeBadge = p.stockMode === 'manual'
+                    ? '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">✋ Manuell</span>'
+                    : '<span style="background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">⚡ Auto</span>';
+
+                tr.innerHTML = `<td><strong>${p.name}</strong></td><td>${p.price.toFixed(2)} €</td><td>${modeBadge}</td><td>${stockInputHtml}</td><td>${stock <= 0 ? '<span style="color: var(--danger); font-weight: bold;">🚫 Leer</span>' : (stock < 5 ? '<span style="color: var(--warning); font-weight: bold;">⚠️ < 5</span>' : '<span style="color: var(--success); font-weight: bold;">OK</span>')}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderStockLog() {
+            const tbody = document.getElementById('stock-log-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (stockLog.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Noch keine Einträge.</td></tr>'; return; }
+            stockLog.forEach((log, index) => {
+                let deleteBtn = '';
+                if (stockAdminUnlocked) {
+                    deleteBtn = ` <button class="btn btn-danger" style="padding: 2px 6px; font-size: 0.7rem; float: right;" onclick="window.deleteSingleStockLog(${index})">X</button>`;
+                }
+                tbody.innerHTML += `<tr><td>${log.dateTime}</td><td><strong>${log.itemName}</strong></td><td><span>${log.stock}</span>${deleteBtn}</td></tr>`;
+            });
+        }
+
+        window.deleteSingleStockLog = function(index) {
+            if (!stockAdminUnlocked) return;
+            stockLog.splice(index, 1);
+            window.saveDataToCloud();
+        }
+
+        function renderJournal() {
+            const tbody = document.getElementById('journal-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (salesJournal.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Noch keine Verkäufe.</td></tr>'; return; }
+            salesJournal.forEach(e => {
+                let items = '<ul style="margin: 0; padding-left: 15px;">';
+                e.items.forEach((i) => items += `<li>${i.qty}x ${i.name} (${(i.price * i.qty).toFixed(2)} €)</li>`);
+                items += '</ul>';
+                
+                let badgeHtml = '';
+                if (e.storniert) badgeHtml = '<span style="background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin-left: 5px;">STORNIERT</span>';
+                else if (e.badge) badgeHtml = `<span style="background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin-left: 5px;">${e.badge}</span>`;
+                
+                if (e.happyHourActive && !e.storniert) {
+                    badgeHtml += `<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin-left: 5px;">Happy Hour</span>`;
+                }
+
+                let actionBtns = `<button class="btn btn-info" style="padding: 5px 9px; font-size: 0.78rem; margin-right: 4px;" onclick='window.openReceiptById(${e.id})'>🧾 Beleg</button>`;
+                if (!e.storniert) {
+                    actionBtns += `<button class="btn btn-warning" style="padding: 5px 9px; font-size: 0.78rem; margin-right: 4px;" onclick="window.stornoEntry(${e.id})">Storno</button>`;
+                }
+                if (currentWaiter && currentWaiter.isAdmin) {
+                    actionBtns += `<button class="btn btn-danger" style="padding: 5px 9px; font-size: 0.78rem;" onclick="window.deleteJournalEntry(${e.id})">Löschen</button>`;
+                }
+
+                tbody.innerHTML += `<tr style="${e.storniert ? 'opacity: 0.6; background-color: #fff1f2;' : ''}"><td><strong>${e.receiptNumber || '-'}</strong></td><td>${e.time} ${badgeHtml}</td><td>${e.waiter}</td><td>${items}</td><td><strong>${e.total.toFixed(2)} €</strong></td><td>${actionBtns}</td></tr>`;
+            });
+        }
+
+        window.openReceiptById = function(entryId) {
+            const entry = salesJournal.find(e => e.id === entryId);
+            if (entry) openReceiptForOrder(entry);
+        }
+
+        function renderStats() {
+            const grid = document.getElementById('stats-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            products.forEach(p => { grid.innerHTML += `<div class="stat-card"><h4>${p.name}</h4><div class="value">${itemCounts[p.name] || 0} Stück</div></div>`; });
+        }
+
+        function renderLoginLog() {
+            const tbody = document.getElementById('login-log-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (loginLog.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Anmeldungen.</td></tr>'; return; }
+            loginLog.forEach(log => { tbody.innerHTML += `<tr><td>${log.dateTime}</td><td><strong>${log.name}</strong></td><td>#${log.id}</td><td><span style="font-weight: 600; color: ${log.action === 'Angemeldet' ? 'var(--success)' : 'var(--danger)'};">${log.action}</span></td></tr>`; });
+        }
+
+        window.resetData = function() {
+            if (!currentWaiter || !currentWaiter.isAdmin) return;
+            if (confirm("Sicher? ALLES wird gelöscht.")) {
+                totalRevenue = 0; salesJournal = []; itemCounts = {}; stockLog = []; loginLog = []; manualStockHistory = []; happyHourSchedules = []; isHappyHour = false; activeDiscounts = {}; individualDiscountsValues = {};
+                companySettings.receiptCounter = 1;
+                window.saveDataToCloud();
+            }
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
