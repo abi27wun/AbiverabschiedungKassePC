@@ -681,7 +681,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #f0f0f2; padding-bottom: 14px; margin-bottom: 10px;">
                     <div>
                         <h2 style="margin: 0; font-size: 1.25rem;">🔒 Admin-Zentrale</h2>
-                        <span id="cloud-sync-status-text" style="font-size: 0.8rem; color: var(--text-secondary);">Automatische Cloud-Synchronisation aktiv</span>
+                        <span id="cloud-sync-status-text" style="font-size: 0.8rem; color: var(--text-secondary);">Verbinde mit Cloud...</span>
                     </div>
                     <button class="btn btn-success" style="padding: 12px 20px; font-size: 0.95rem; box-shadow: 0 4px 14px rgba(52,199,89,0.3);" onclick="manualCloudSaveAll()">
                         💾 Alle Daten in Cloud speichern
@@ -1080,14 +1080,14 @@
     </div>
 
     <footer>
-        <span>Cloud-Sync aktiv (Apple Design)</span>
+        <span id="footer-sync-badge">Cloud-Sync: Verbindet...</span>
         <span>Umsatz heute: <strong id="total-revenue">0,00 €</strong></span>
     </footer>
 
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDSZ2r9G9328WMfL_KFZr0JqvrEVGmpdxo",
@@ -1100,9 +1100,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const kasseDocRef = doc(db, "kasse", "data");
 
-        let categories = ["Getränke", "Alkoholfrei", "Essen & Snacks"];
-        let products = [
+        const defaultCategories = ["Getränke", "Alkoholfrei", "Essen & Snacks"];
+        const defaultProducts = [
             { id: 1, name: "Bier 0,33l", price: 3.00, category: "Getränke", stockMode: "auto" },
             { id: 2, name: "Cola / Fanta", price: 2.50, category: "Alkoholfrei", stockMode: "auto" },
             { id: 3, name: "Wasser", price: 2.00, category: "Alkoholfrei", stockMode: "auto" },
@@ -1112,6 +1113,9 @@
             { id: 7, name: "Snack / Chips", price: 1.50, category: "Essen & Snacks", stockMode: "auto" },
             { id: 8, name: "Alkoholfreies", price: 3.00, category: "Alkoholfrei", stockMode: "auto" }
         ];
+
+        let categories = [...defaultCategories];
+        let products = JSON.parse(JSON.stringify(defaultProducts));
 
         let discountPresets = [
             { id: 1, name: "Q13 (Frei)", percent: 100, color: "#af52de" },
@@ -1129,7 +1133,7 @@
             receiptFooter: "Vielen Dank für Ihren Besuch!"
         };
 
-        let cart = [];
+        // Synchronisierte globale Daten (alles außer Warenkörben)
         let totalRevenue = 0;
         let salesJournal = []; 
         let itemCounts = {};   
@@ -1137,7 +1141,24 @@
         let stockLog = [];     
         let loginLog = [];
         let manualStockHistory = [];
-        
+        let isHappyHour = false;
+        let activeDiscounts = {}; 
+        let happyHourSchedules = [];
+        let individualDiscountsValues = {};
+        let kasseActive = true;
+
+        // Rein lokale Geräte-Daten (NICHT synchronisiert)
+        let cart = [];
+        let selectedDiscount = null;
+        let currentMultiplier = 1;
+        let currentWaiter = null;
+        let stockAdminUnlocked = false;
+        let currentViewedReceiptOrder = null;
+
+        // Sync-Status & Sperre gegen Überschreiben mit Defaults vor erstem Laden
+        let hasLoadedFromCloud = false;
+        let productSaveTimer = null;
+
         // Feste Accounts (Admins + Kellner 1 bis 10)
         const authorizedWaiters = {
             "Jonas(Admin)": { name: "Jonas", pass: "2027", isAdmin: true },
@@ -1153,19 +1174,6 @@
             "Kellner009": { name: "Kellner 9", pass: "8942", isAdmin: false },
             "Kellner010": { name: "Kellner 10", pass: "5671", isAdmin: false }
         };
-
-        let isHappyHour = false;
-        let activeDiscounts = {}; 
-        let happyHourSchedules = [];
-        let individualDiscountsValues = {};
-        let kasseActive = true;
-        
-        let selectedDiscount = null;
-        let currentMultiplier = 1;
-        let currentWaiter = null;
-        let stockAdminUnlocked = false;
-        let currentViewedReceiptOrder = null;
-        let productSaveTimer = null;
 
         // ==========================================
         // QR-CODE BELEG MODUS (Wenn Kunde QR scannt)
@@ -1205,95 +1213,158 @@
             }
         }
 
-        function initApp() {
+        function applyCloudSnapshotData(data) {
+            if (!data) return;
+
+            totalRevenue = data.totalRevenue || 0;
+            salesJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [];
+            itemCounts = data.itemCounts || {};
+            stockData = data.stockData || {};
+            stockLog = Array.isArray(data.stockLog) ? data.stockLog : [];
+            loginLog = Array.isArray(data.loginLog) ? data.loginLog : [];
+            manualStockHistory = Array.isArray(data.manualStockHistory) ? data.manualStockHistory : [];
+            
+            if (Array.isArray(data.products)) {
+                products = data.products.map(p => ({
+                    ...p,
+                    stockMode: p.stockMode || 'auto'
+                }));
+            }
+            products.forEach(p => {
+                if (stockData[p.id] === undefined) stockData[p.id] = 50;
+            });
+
+            if (Array.isArray(data.categories) && data.categories.length > 0) {
+                categories = data.categories;
+            }
+            if (Array.isArray(data.discountPresets)) {
+                discountPresets = data.discountPresets;
+            }
+            if (data.companySettings) {
+                companySettings = { ...companySettings, ...data.companySettings };
+            }
+            happyHourSchedules = Array.isArray(data.happyHourSchedules) ? data.happyHourSchedules : [];
+            
+            isHappyHour = !!data.isHappyHour;
+            activeDiscounts = data.activeDiscounts || {};
+            individualDiscountsValues = data.individualDiscountsValues || {};
+            kasseActive = data.kasseActive !== undefined ? data.kasseActive : true;
+
+            document.getElementById('total-revenue').innerText = totalRevenue.toFixed(2) + ' €';
+            document.getElementById('happy-hour-main-toggle').checked = isHappyHour;
+            document.getElementById('kasse-active-toggle').checked = kasseActive;
+            
+            const receiptBtn = document.getElementById('btn-create-receipt');
+            if (receiptBtn) {
+                receiptBtn.disabled = salesJournal.length === 0;
+            }
+
+            updateHappyHourHeaderStatus();
+            updateKasseActiveStatusLabel();
+            populateCompanySettingsForm();
+
+            // Alle Ansichten live aktualisieren (Warenkorb bleibt dabei lokal erhalten)
+            renderPosGrid();
+            renderStockTable();
+            renderStockLog();
+            renderJournal();
+            renderStats();
+            renderWaitersTable();
+            renderLoginLog();
+            renderAdminProductsGrid();
+            renderAdminDiscountsTable();
+            renderManualHHProducts();
+            renderSchedHHProducts();
+            renderSchedulesList();
+            renderManualStockModalContent();
+            updateCartUI();
+        }
+
+        function setSyncStatus(message, isError = false) {
+            const color = isError ? 'var(--danger)' : 'var(--success)';
+            const adminStatus = document.getElementById('cloud-sync-status-text');
+            const footerStatus = document.getElementById('footer-sync-badge');
+            if (adminStatus) {
+                adminStatus.innerText = message;
+                adminStatus.style.color = color;
+            }
+            if (footerStatus) {
+                footerStatus.innerText = message;
+                footerStatus.style.color = color;
+            }
+        }
+
+        async function initApp() {
             if (checkPublicReceiptMode()) return;
 
             products.forEach(p => { 
                 if (stockData[p.id] === undefined) stockData[p.id] = 50; 
             });
 
-            // Cloud-Listener läuft immer – auch wenn niemand eingeloggt ist
-            onSnapshot(doc(db, "kasse", "data"), (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    totalRevenue = data.totalRevenue || 0;
-                    salesJournal = data.salesJournal || [];
-                    itemCounts = data.itemCounts || {};
-                    stockData = data.stockData || {};
-                    stockLog = data.stockLog || [];
-                    loginLog = data.loginLog || [];
-                    manualStockHistory = data.manualStockHistory || [];
-                    
-                    if (data.products && Array.isArray(data.products)) {
-                        products = data.products.map(p => ({
-                            ...p,
-                            stockMode: p.stockMode || 'auto'
-                        }));
-                    }
-                    products.forEach(p => {
-                        if (stockData[p.id] === undefined) stockData[p.id] = 50;
-                    });
-
-                    categories = data.categories || categories;
-                    if (data.discountPresets && Array.isArray(data.discountPresets)) {
-                        discountPresets = data.discountPresets;
-                    }
-                    if (data.companySettings) {
-                        companySettings = { ...companySettings, ...data.companySettings };
-                    }
-                    happyHourSchedules = data.happyHourSchedules || [];
-                    
-                    isHappyHour = data.isHappyHour || false;
-                    activeDiscounts = data.activeDiscounts || {};
-                    individualDiscountsValues = data.individualDiscountsValues || {};
-                    kasseActive = data.kasseActive !== undefined ? data.kasseActive : true;
-
-                    document.getElementById('total-revenue').innerText = totalRevenue.toFixed(2) + ' €';
-                    document.getElementById('happy-hour-main-toggle').checked = isHappyHour;
-                    document.getElementById('kasse-active-toggle').checked = kasseActive;
-                    
-                    const receiptBtn = document.getElementById('btn-create-receipt');
-                    if (receiptBtn) {
-                        receiptBtn.disabled = salesJournal.length === 0;
-                    }
-
-                    updateHappyHourHeaderStatus();
-                    updateKasseActiveStatusLabel();
-                    populateCompanySettingsForm();
-
-                    renderPosGrid();
-                    renderStockTable();
-                    renderStockLog();
-                    renderJournal();
-                    renderStats();
-                    renderWaitersTable();
-                    renderLoginLog();
-                    renderAdminProductsGrid();
-                    renderAdminDiscountsTable();
-                    renderManualHHProducts();
-                    renderSchedHHProducts();
-                    renderSchedulesList();
-                    renderManualStockModalContent();
-                    updateCartUI();
+            // 1. Erst einmalig den aktuellen Stand laden, damit Defaults niemals die Cloud überschreiben
+            try {
+                const initialSnap = await getDoc(kasseDocRef);
+                if (initialSnap.exists()) {
+                    applyCloudSnapshotData(initialSnap.data());
+                    hasLoadedFromCloud = true;
+                    setSyncStatus(`Cloud-Sync aktiv (Stand: ${new Date().toLocaleTimeString()} Uhr)`);
                 } else {
-                    // Initiales Dokument anlegen, falls noch nicht vorhanden
-                    window.saveDataToCloud();
+                    hasLoadedFromCloud = true;
+                    await window.manualCloudSaveAll(true);
+                }
+            } catch (e) {
+                console.warn("Initialer getDoc-Abruf wartet auf onSnapshot:", e);
+            }
+
+            // 2. Echtzeit-Listener für alle Änderungen anderer Nutzer (auch ohne Login aktiv)
+            onSnapshot(kasseDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    applyCloudSnapshotData(docSnap.data());
+                    hasLoadedFromCloud = true;
+                    const sourceLabel = docSnap.metadata.fromCache ? "Zwischenspeicher" : "Live";
+                    setSyncStatus(`Cloud-Sync: ${sourceLabel} (${new Date().toLocaleTimeString()} Uhr)`);
+                } else if (!hasLoadedFromCloud) {
+                    hasLoadedFromCloud = true;
+                    window.manualCloudSaveAll(true);
                 }
             }, (error) => {
                 console.error("Firebase Sync Fehler:", error);
-                const statusEl = document.getElementById('cloud-sync-status-text');
-                if (statusEl) {
-                    statusEl.innerText = "Cloud-Verbindungsfehler: " + error.message;
-                    statusEl.style.color = 'var(--danger)';
-                }
+                setSyncStatus("Cloud-Verbindungsfehler: " + error.message, true);
             });
 
             updateClock();
             setInterval(updateClock, 1000);
         }
 
-        window.saveDataToCloud = async function() {
-            const rawPayload = {
+        // Gezieltes Speichern einzelner Bereiche per { merge: true }, damit nichts anderes überschrieben wird
+        window.savePartialToCloud = async function(partialData) {
+            if (!hasLoadedFromCloud) {
+                try {
+                    const snap = await getDoc(kasseDocRef);
+                    if (snap.exists()) {
+                        applyCloudSnapshotData(snap.data());
+                    }
+                    hasLoadedFromCloud = true;
+                } catch (e) {
+                    alert("Cloud wird noch geladen. Bitte in 2 Sekunden erneut versuchen.");
+                    return;
+                }
+            }
+
+            const cleanPartial = JSON.parse(JSON.stringify(partialData));
+            try {
+                await setDoc(kasseDocRef, cleanPartial, { merge: true });
+                setSyncStatus(`Gespeichert: ${new Date().toLocaleTimeString()} Uhr`);
+            } catch (err) {
+                console.error("Firebase Speicherfehler:", err);
+                setSyncStatus("Speicherfehler: " + err.message, true);
+                alert("Fehler beim Speichern in der Cloud: " + err.message);
+            }
+        }
+
+        // Komplettspeicherung (z. B. über den großen Speicherknopf im Adminbereich)
+        window.manualCloudSaveAll = async function(silent = false) {
+            const fullGlobalPayload = {
                 totalRevenue,
                 salesJournal,
                 itemCounts,
@@ -1311,29 +1382,21 @@
                 individualDiscountsValues,
                 kasseActive
             };
-            // Bereinigt alle 'undefined'-Werte, damit Firestore setDoc nicht abweist
-            const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
+            const cleanPayload = JSON.parse(JSON.stringify(fullGlobalPayload));
             try {
-                localStorage.setItem('abi_kasse_backup', JSON.stringify(cleanPayload));
-            } catch (e) {}
-
-            try {
-                await setDoc(doc(db, "kasse", "data"), cleanPayload);
-                const now = new Date();
-                const statusEl = document.getElementById('cloud-sync-status-text');
-                if (statusEl) {
-                    statusEl.innerText = `Zuletzt in Cloud gespeichert: ${now.toLocaleTimeString()} Uhr`;
-                    statusEl.style.color = 'var(--success)';
+                await setDoc(kasseDocRef, cleanPayload, { merge: true });
+                hasLoadedFromCloud = true;
+                setSyncStatus(`Alle Daten gespeichert: ${new Date().toLocaleTimeString()} Uhr`);
+                if (!silent) {
+                    alert("Alle Kassendaten (außer lokale Warenkörbe) wurden erfolgreich in der Cloud gespeichert!");
                 }
             } catch (err) {
                 console.error("Firebase Speicherfehler:", err);
-                alert("Fehler beim Speichern in der Cloud: " + err.message);
+                setSyncStatus("Speicherfehler: " + err.message, true);
+                if (!silent) {
+                    alert("Fehler beim Speichern in der Cloud: " + err.message);
+                }
             }
-        }
-
-        window.manualCloudSaveAll = async function() {
-            await window.saveDataToCloud();
-            alert("Alle Kassendaten, Produkte, Lagerbestände, Rabatte und Belegdaten wurden erfolgreich in der Cloud gespeichert!");
         }
 
         // ==========================================
@@ -1421,12 +1484,12 @@
         window.toggleKasseActive = function(checked) {
             kasseActive = checked;
             updateKasseActiveStatusLabel();
-            window.saveDataToCloud();
             renderPosGrid();
+            window.savePartialToCloud({ kasseActive });
         }
 
         // ==========================================
-        // MANUELLER LAGER-ABZUG & RÜCKGÄNGIG FÜR KELLNER
+        // MANUELLER LAGER-ABZUG & RÜCKGÄNGIG FÜR KELLNER (ATOMARE TRANSAKTION)
         // ==========================================
         window.openManualStockModal = function() {
             renderManualStockModalContent();
@@ -1477,78 +1540,106 @@
             });
         }
 
-        window.deductManualStock = function(productId) {
-            const product = products.find(p => p.id === productId);
-            if (!product || product.stockMode !== 'manual') {
-                alert("Dieses Produkt ist nicht für manuelle Änderungen freigegeben.");
-                return;
-            }
-            const currentStock = stockData[productId] !== undefined ? stockData[productId] : 50;
+        window.deductManualStock = async function(productId) {
             const inputEl = document.getElementById(`manual-deduct-qty-${productId}`);
             const amount = parseInt(inputEl ? inputEl.value : 1) || 0;
-
             if (amount <= 0) {
                 alert("Es kann nur eine Menge ab 1 abgezogen werden (nur weniger, nicht mehr).");
                 return;
             }
-            if (amount > currentStock) {
-                alert(`Nicht genügend Bestand! Es sind nur noch ${currentStock} Stück vorhanden.`);
-                return;
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveProducts = data.products || products;
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveStockLog = data.stockLog || [...stockLog];
+                    const liveHistory = data.manualStockHistory || [...manualStockHistory];
+
+                    const product = liveProducts.find(p => p.id === productId);
+                    if (!product || product.stockMode !== 'manual') {
+                        throw new Error("Dieses Produkt ist nicht für manuelle Änderungen freigegeben.");
+                    }
+
+                    const currentStock = liveStock[productId] !== undefined ? liveStock[productId] : 50;
+                    if (amount > currentStock) {
+                        throw new Error(`Nicht genügend Bestand! Es sind nur noch ${currentStock} Stück vorhanden.`);
+                    }
+
+                    liveStock[productId] = currentStock - amount;
+                    const now = new Date();
+                    const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
+                    const timeStr = now.toLocaleTimeString();
+
+                    liveHistory.unshift({
+                        id: Date.now(),
+                        productId: product.id,
+                        productName: product.name,
+                        amount: amount,
+                        waiter: waiterLabel,
+                        time: timeStr
+                    });
+
+                    liveStockLog.unshift({
+                        dateTime: now.toLocaleDateString() + ' um ' + timeStr,
+                        itemName: product.name,
+                        stock: `-${amount} Stück (Manuell durch ${waiterLabel}, neu: ${liveStock[productId]})`
+                    });
+
+                    transaction.set(kasseDocRef, {
+                        stockData: liveStock,
+                        stockLog: liveStockLog,
+                        manualStockHistory: liveHistory
+                    }, { merge: true });
+                });
+            } catch (err) {
+                alert(err.message || "Fehler beim Lagerabzug.");
             }
-
-            stockData[productId] = currentStock - amount;
-            const now = new Date();
-            const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
-            const timeStr = now.toLocaleTimeString();
-
-            manualStockHistory.unshift({
-                id: Date.now(),
-                productId: product.id,
-                productName: product.name,
-                amount: amount,
-                waiter: waiterLabel,
-                time: timeStr
-            });
-
-            stockLog.unshift({
-                dateTime: now.toLocaleDateString() + ' um ' + timeStr,
-                itemName: product.name,
-                stock: `-${amount} Stück (Manuell durch ${waiterLabel}, neu: ${stockData[productId]})`
-            });
-
-            window.saveDataToCloud();
-            renderManualStockModalContent();
         }
 
-        window.undoLastManualStock = function() {
-            const idx = manualStockHistory.findIndex(entry => {
-                const prod = products.find(p => p.id === entry.productId);
-                return prod && prod.stockMode === 'manual';
-            });
+        window.undoLastManualStock = async function() {
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveProducts = data.products || products;
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveStockLog = data.stockLog || [...stockLog];
+                    const liveHistory = data.manualStockHistory || [...manualStockHistory];
 
-            if (idx === -1) {
-                alert("Keine rückgängig machbare Entnahme gefunden.");
-                return;
+                    const idx = liveHistory.findIndex(entry => {
+                        const prod = liveProducts.find(p => p.id === entry.productId);
+                        return prod && prod.stockMode === 'manual';
+                    });
+
+                    if (idx === -1) {
+                        throw new Error("Keine rückgängig machbare Entnahme gefunden.");
+                    }
+
+                    const entry = liveHistory[idx];
+                    const product = liveProducts.find(p => p.id === entry.productId);
+                    const currentStock = liveStock[entry.productId] !== undefined ? liveStock[entry.productId] : 0;
+                    liveStock[entry.productId] = currentStock + entry.amount;
+                    liveHistory.splice(idx, 1);
+
+                    const now = new Date();
+                    const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
+                    liveStockLog.unshift({
+                        dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(),
+                        itemName: product.name,
+                        stock: `+${entry.amount} Stück (Rückgängig durch ${waiterLabel}, neu: ${liveStock[entry.productId]})`
+                    });
+
+                    transaction.set(kasseDocRef, {
+                        stockData: liveStock,
+                        stockLog: liveStockLog,
+                        manualStockHistory: liveHistory
+                    }, { merge: true });
+                });
+            } catch (err) {
+                alert(err.message || "Fehler beim Rückgängigmachen.");
             }
-
-            const entry = manualStockHistory[idx];
-            const product = products.find(p => p.id === entry.productId);
-            if (!product || product.stockMode !== 'manual') return;
-
-            const currentStock = stockData[entry.productId] !== undefined ? stockData[entry.productId] : 0;
-            stockData[entry.productId] = currentStock + entry.amount;
-            manualStockHistory.splice(idx, 1);
-
-            const now = new Date();
-            const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
-            stockLog.unshift({
-                dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(),
-                itemName: product.name,
-                stock: `+${entry.amount} Stück (Rückgängig durch ${waiterLabel}, neu: ${stockData[entry.productId]})`
-            });
-
-            window.saveDataToCloud();
-            renderManualStockModalContent();
         }
 
         // ==========================================
@@ -1595,14 +1686,14 @@
             const now = new Date();
             const actor = currentWaiter ? currentWaiter.name : 'Admin';
             stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: product ? product.name : 'Unbekannt', stock: `Auf ${newVal} geändert durch ${actor}` });
-            window.saveDataToCloud();
+            window.savePartialToCloud({ stockData, stockLog });
         }
 
         window.clearStockLog = function() {
             if (!stockAdminUnlocked) return;
             if (confirm("Möchtest du das gesamte Lager-Logbuch löschen?")) {
                 stockLog = [];
-                window.saveDataToCloud();
+                window.savePartialToCloud({ stockLog });
             }
         }
 
@@ -1629,7 +1720,7 @@
             document.getElementById('new-discount-name').value = '';
             document.getElementById('new-discount-percent').value = '';
             renderAdminDiscountsTable();
-            window.saveDataToCloud();
+            window.savePartialToCloud({ discountPresets });
         }
 
         window.updateDiscountPreset = function(id, field, value) {
@@ -1642,7 +1733,7 @@
             } else if (field === 'color') {
                 d.color = value;
             }
-            window.saveDataToCloud();
+            window.savePartialToCloud({ discountPresets });
         }
 
         window.deleteDiscountPreset = function(id) {
@@ -1652,7 +1743,7 @@
                     selectedDiscount = null;
                 }
                 renderAdminDiscountsTable();
-                window.saveDataToCloud();
+                window.savePartialToCloud({ discountPresets });
             }
         }
 
@@ -1756,7 +1847,7 @@
             companySettings.receiptCounter = Math.max(1, parseInt(document.getElementById('comp-receipt-counter').value) || 1);
             companySettings.receiptFooter = document.getElementById('comp-footer').value.trim();
 
-            window.saveDataToCloud();
+            window.savePartialToCloud({ companySettings });
             alert("Beleg- und Firmendaten erfolgreich gespeichert!");
         }
 
@@ -2118,10 +2209,10 @@
             if (checked && Object.keys(activeDiscounts).length === 0) {
                 products.forEach(p => activeDiscounts[p.id] = 1.00);
             }
-            window.saveDataToCloud();
             updateHappyHourHeaderStatus();
             updateCartUI();
             renderPosGrid();
+            window.savePartialToCloud({ isHappyHour, activeDiscounts });
         }
 
         window.updateManualUI = function() {
@@ -2168,8 +2259,8 @@
             if (Object.keys(activeDiscounts).length === 0) { alert("Du musst mindestens ein Produkt auswählen!"); return; }
             isHappyHour = true;
             document.getElementById('happy-hour-main-toggle').checked = true;
-            window.saveDataToCloud();
             updateHappyHourHeaderStatus();
+            window.savePartialToCloud({ isHappyHour, activeDiscounts, individualDiscountsValues });
             alert("Happy Hour Werte gespeichert und aktiv geschaltet!");
         }
 
@@ -2178,9 +2269,9 @@
             activeDiscounts = {};
             individualDiscountsValues = {};
             document.getElementById('happy-hour-main-toggle').checked = false;
-            window.saveDataToCloud();
             updateHappyHourHeaderStatus();
             renderManualHHProducts();
+            window.savePartialToCloud({ isHappyHour, activeDiscounts, individualDiscountsValues });
             alert("Happy Hour zurückgesetzt und beendet.");
         }
 
@@ -2231,7 +2322,8 @@
             document.getElementById('sched-day').value = '';
             document.getElementById('sched-start').value = '';
             document.getElementById('sched-end').value = '';
-            window.saveDataToCloud();
+            renderSchedulesList();
+            window.savePartialToCloud({ happyHourSchedules });
             alert("Zeitplan erfolgreich gespeichert!");
         }
 
@@ -2245,10 +2337,14 @@
             });
         }
 
-        window.removeScheduleHH = function(id) { happyHourSchedules = happyHourSchedules.filter(s => s.id !== id); window.saveDataToCloud(); }
+        window.removeScheduleHH = function(id) {
+            happyHourSchedules = happyHourSchedules.filter(s => s.id !== id);
+            renderSchedulesList();
+            window.savePartialToCloud({ happyHourSchedules });
+        }
 
         // ==========================================
-        // KASSEN / POS LOGIK (Ohne Lageranzeige unter den Buttons)
+        // KASSEN / POS LOGIK (Warenkorb bleibt lokal)
         // ==========================================
         function getEffectivePrice(product) {
             if (isHappyHour && activeDiscounts[product.id]) {
@@ -2309,6 +2405,7 @@
         window.addToCart = function(productId) {
             if (!kasseActive) return;
             const product = products.find(p => p.id === productId);
+            if (!product) return;
             const effectivePrice = getEffectivePrice(product);
             const currentStock = stockData[productId] !== undefined ? stockData[productId] : 50;
             const qtyToAdd = currentMultiplier;
@@ -2381,9 +2478,9 @@
         }
 
         // ==========================================
-        // LOGIN / LOGOUT / CHECKOUT
+        // LOGIN / LOGOUT / CHECKOUT (TRANSAKTIONEN)
         // ==========================================
-        window.performLogin = function() {
+        window.performLogin = async function() {
             const id = document.getElementById('login-id').value.trim();
             const pass = document.getElementById('login-pass').value.trim();
 
@@ -2391,6 +2488,17 @@
             if (!waiter || waiter.pass !== pass) {
                 alert("Fehler: Unbekannte ID oder falsches Passwort!");
                 return;
+            }
+
+            // Sicherstellen, dass Cloud-Daten geladen sind, bevor irgendwas geschrieben wird
+            if (!hasLoadedFromCloud) {
+                try {
+                    const snap = await getDoc(kasseDocRef);
+                    if (snap.exists()) {
+                        applyCloudSnapshotData(snap.data());
+                    }
+                    hasLoadedFromCloud = true;
+                } catch (e) {}
             }
 
             currentWaiter = { name: waiter.name, id: id, isAdmin: waiter.isAdmin };
@@ -2405,21 +2513,40 @@
             }
 
             const now = new Date();
-            loginLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Angemeldet' });
-            window.saveDataToCloud();
+            const logEntry = { dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Angemeldet' };
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveLogs = Array.isArray(data.loginLog) ? data.loginLog : [];
+                    liveLogs.unshift(logEntry);
+                    transaction.set(kasseDocRef, { loginLog: liveLogs }, { merge: true });
+                });
+            } catch (e) {
+                console.warn("Login-Log konnte nicht geschrieben werden:", e);
+            }
         }
 
-        window.performLogout = function() {
+        window.performLogout = async function() {
             if (!currentWaiter) return;
             const now = new Date();
-            loginLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Abgemeldet' });
-            window.saveDataToCloud();
+            const logEntry = { dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), name: currentWaiter.name, id: currentWaiter.id, action: 'Abgemeldet' };
 
             currentWaiter = null;
             stockAdminUnlocked = false;
             document.getElementById('login-id').value = '';
             document.getElementById('login-pass').value = '';
             document.getElementById('login-overlay').style.display = 'flex';
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveLogs = Array.isArray(data.loginLog) ? data.loginLog : [];
+                    liveLogs.unshift(logEntry);
+                    transaction.set(kasseDocRef, { loginLog: liveLogs }, { merge: true });
+                });
+            } catch (e) {}
         }
 
         function updateClock() {
@@ -2460,107 +2587,176 @@
             else { changeEl.innerText = 'Zu wenig!'; changeEl.style.color = 'var(--danger)'; }
         }
 
-        window.checkout = function() { 
+        window.checkout = async function() { 
+            if (cart.length === 0) return;
+
             const currentCartBackup = JSON.parse(JSON.stringify(cart));
             const subtotal = currentCartBackup.reduce((sum, item) => sum + (item.price * item.qty), 0);
             const factor = selectedDiscount ? Math.max(0, 1 - (selectedDiscount.percent / 100)) : 1.0;
             const total = subtotal * factor;
             const badgeType = selectedDiscount ? `${selectedDiscount.name} (-${selectedDiscount.percent}%)` : '';
-            
-            totalRevenue += total;
-            
+            const waiterStr = currentWaiter ? `${currentWaiter.name} (${currentWaiter.id})` : 'Unbekannt';
+            const now = new Date();
+            const timeStr = now.toLocaleDateString() + ' um ' + now.toLocaleTimeString();
+
+            // Lokalen Warenkorb sofort leeren
             cart = [];
             selectedDiscount = null;
             updateCartUI();
-
             document.getElementById('cash-given-input').value = '';
             document.getElementById('change-amount').innerText = '0,00 €';
 
-            currentCartBackup.forEach(item => {
-                const prod = products.find(p => p.id === item.id);
-                if (!prod || prod.stockMode !== 'manual') {
-                    stockData[item.id] = Math.max(0, (stockData[item.id] !== undefined ? stockData[item.id] : 50) - item.qty);
-                }
-                itemCounts[item.name] = (itemCounts[item.name] || 0) + item.qty;
-            });
+            try {
+                let assignedReceiptNumber = '';
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
 
-            const currentNum = companySettings.receiptCounter || 1;
-            const paddedNum = String(currentNum).padStart(4, '0');
-            const receiptNumber = `${companySettings.receiptPrefix || 'RE-2026-'}${paddedNum}`;
-            companySettings.receiptCounter = currentNum + 1;
+                    const liveRevenue = (data.totalRevenue || 0) + total;
+                    const liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [];
+                    const liveCounts = data.itemCounts || {};
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveProducts = Array.isArray(data.products) ? data.products : products;
+                    const liveCompany = { ...companySettings, ...(data.companySettings || {}) };
 
-            const now = new Date();
-            const newOrder = {
-                id: Date.now(),
-                receiptNumber: receiptNumber,
-                time: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(),
-                waiter: currentWaiter ? `${currentWaiter.name} (${currentWaiter.id})` : 'Unbekannt',
-                items: currentCartBackup,
-                subtotal: subtotal,
-                total: total,
-                badge: badgeType,
-                happyHourActive: isHappyHour,
-                storniert: false
-            };
+                    currentCartBackup.forEach(item => {
+                        const prod = liveProducts.find(p => p.id === item.id);
+                        if (!prod || prod.stockMode !== 'manual') {
+                            liveStock[item.id] = Math.max(0, (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) - item.qty);
+                        }
+                        liveCounts[item.name] = (liveCounts[item.name] || 0) + item.qty;
+                    });
 
-            salesJournal.unshift(newOrder);
-            document.getElementById('btn-create-receipt').disabled = false;
+                    const currentNum = liveCompany.receiptCounter || 1;
+                    const paddedNum = String(currentNum).padStart(4, '0');
+                    assignedReceiptNumber = `${liveCompany.receiptPrefix || 'RE-2026-'}${paddedNum}`;
+                    liveCompany.receiptCounter = currentNum + 1;
 
-            window.saveDataToCloud();
-            alert(`Bezahlt! Summe: ${total.toFixed(2)} € ${badgeType ? '(' + badgeType + ')' : ''}\nBeleg-Nr.: ${receiptNumber}`);
+                    const newOrder = {
+                        id: Date.now(),
+                        receiptNumber: assignedReceiptNumber,
+                        time: timeStr,
+                        waiter: waiterStr,
+                        items: currentCartBackup,
+                        subtotal: subtotal,
+                        total: total,
+                        badge: badgeType,
+                        happyHourActive: !!data.isHappyHour,
+                        storniert: false
+                    };
+
+                    liveJournal.unshift(newOrder);
+
+                    transaction.set(kasseDocRef, {
+                        totalRevenue: liveRevenue,
+                        salesJournal: liveJournal,
+                        itemCounts: liveCounts,
+                        stockData: liveStock,
+                        companySettings: liveCompany
+                    }, { merge: true });
+                });
+
+                document.getElementById('btn-create-receipt').disabled = false;
+                alert(`Bezahlt! Summe: ${total.toFixed(2)} € ${badgeType ? '(' + badgeType + ')' : ''}\nBeleg-Nr.: ${assignedReceiptNumber}`);
+            } catch (err) {
+                console.error("Checkout Fehler:", err);
+                alert("Fehler beim Buchen in der Cloud: " + err.message);
+            }
         }
 
-        window.stornoEntry = function(entryId) {
-            const entry = salesJournal.find(e => e.id === entryId);
-            if (!entry || entry.storniert) return;
+        window.stornoEntry = async function(entryId) {
             if (!confirm("Möchtest du diese Bestellung wirklich stornieren? Betrag wird abgezogen und automatische Artikel wandern ins Lager zurück.")) return;
 
-            totalRevenue = Math.max(0, totalRevenue - entry.total);
-            entry.storniert = true;
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [];
+                    const entry = liveJournal.find(e => e.id === entryId);
+                    if (!entry || entry.storniert) return;
 
-            const now = new Date();
-            const actor = currentWaiter ? currentWaiter.name : 'Admin';
-            entry.items.forEach(item => {
-                const prod = products.find(p => p.id === item.id);
-                if (!prod || prod.stockMode !== 'manual') {
-                    stockData[item.id] = (stockData[item.id] !== undefined ? stockData[item.id] : 50) + item.qty;
-                    stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `+${item.qty} Stück (Storno durch ${actor})` });
-                } else {
-                    stockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `Storno durch ${actor} (Manueller Bestand unverändert)` });
-                }
-                itemCounts[item.name] = Math.max(0, (itemCounts[item.name] || 0) - item.qty);
-            });
-            window.saveDataToCloud();
-            alert("Bestellung erfolgreich storniert!");
+                    const liveRevenue = Math.max(0, (data.totalRevenue || 0) - entry.total);
+                    entry.storniert = true;
+
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveStockLog = Array.isArray(data.stockLog) ? data.stockLog : [];
+                    const liveCounts = data.itemCounts || {};
+                    const liveProducts = Array.isArray(data.products) ? data.products : products;
+
+                    const now = new Date();
+                    const actor = currentWaiter ? currentWaiter.name : 'Admin';
+                    entry.items.forEach(item => {
+                        const prod = liveProducts.find(p => p.id === item.id);
+                        if (!prod || prod.stockMode !== 'manual') {
+                            liveStock[item.id] = (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) + item.qty;
+                            liveStockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `+${item.qty} Stück (Storno durch ${actor})` });
+                        } else {
+                            liveStockLog.unshift({ dateTime: now.toLocaleDateString() + ' um ' + now.toLocaleTimeString(), itemName: item.name, stock: `Storno durch ${actor} (Manueller Bestand unverändert)` });
+                        }
+                        liveCounts[item.name] = Math.max(0, (liveCounts[item.name] || 0) - item.qty);
+                    });
+
+                    transaction.set(kasseDocRef, {
+                        totalRevenue: liveRevenue,
+                        salesJournal: liveJournal,
+                        stockData: liveStock,
+                        stockLog: liveStockLog,
+                        itemCounts: liveCounts
+                    }, { merge: true });
+                });
+                alert("Bestellung erfolgreich storniert!");
+            } catch (err) {
+                alert("Fehler beim Stornieren: " + err.message);
+            }
         }
 
-        window.deleteJournalEntry = function(entryId) {
+        window.deleteJournalEntry = async function(entryId) {
             if (!currentWaiter || !currentWaiter.isAdmin) {
                 alert("Nur Administratoren können Kassenbucheinträge löschen!");
                 return;
             }
-            const entry = salesJournal.find(e => e.id === entryId);
-            if (!entry) return;
+            if (!confirm("Möchtest du diesen Kassenbucheintrag komplett löschen? (Der Betrag wird vom Umsatz abgezogen und automatische Artikel wandern ins Lager zurück).")) return;
 
-            if (confirm("Möchtest du diesen Kassenbucheintrag komplett löschen? (Der Betrag wird vom Umsatz abgezogen und automatische Artikel wandern ins Lager zurück).")) {
-                if (!entry.storniert) {
-                    totalRevenue = Math.max(0, totalRevenue - entry.total);
-                    entry.items.forEach(item => {
-                        const prod = products.find(p => p.id === item.id);
-                        if (!prod || prod.stockMode !== 'manual') {
-                            stockData[item.id] = (stockData[item.id] !== undefined ? stockData[item.id] : 50) + item.qty;
-                        }
-                        itemCounts[item.name] = Math.max(0, (itemCounts[item.name] || 0) - item.qty);
-                    });
-                }
-                salesJournal = salesJournal.filter(e => e.id !== entryId);
-                window.saveDataToCloud();
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    let liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [];
+                    const entry = liveJournal.find(e => e.id === entryId);
+                    if (!entry) return;
+
+                    let liveRevenue = data.totalRevenue || 0;
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveCounts = data.itemCounts || {};
+                    const liveProducts = Array.isArray(data.products) ? data.products : products;
+
+                    if (!entry.storniert) {
+                        liveRevenue = Math.max(0, liveRevenue - entry.total);
+                        entry.items.forEach(item => {
+                            const prod = liveProducts.find(p => p.id === item.id);
+                            if (!prod || prod.stockMode !== 'manual') {
+                                liveStock[item.id] = (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) + item.qty;
+                            }
+                            liveCounts[item.name] = Math.max(0, (liveCounts[item.name] || 0) - item.qty);
+                        });
+                    }
+                    liveJournal = liveJournal.filter(e => e.id !== entryId);
+
+                    transaction.set(kasseDocRef, {
+                        totalRevenue: liveRevenue,
+                        salesJournal: liveJournal,
+                        stockData: liveStock,
+                        itemCounts: liveCounts
+                    }, { merge: true });
+                });
                 alert("Kassenbucheintrag gelöscht und Umsatz angepasst.");
+            } catch (err) {
+                alert("Fehler beim Löschen: " + err.message);
             }
         }
 
         // ==========================================
-        // PRODUKTE & KATEGORIEN BEARBEITEN (MIT LIVE-SYNC-FIX)
+        // PRODUKTE & KATEGORIEN BEARBEITEN (GEZIELTER SYNC)
         // ==========================================
         window.addCategory = function() {
             const catName = document.getElementById('new-cat-name').value.trim();
@@ -2568,7 +2764,7 @@
             categories.push(catName);
             document.getElementById('new-cat-name').value = '';
             renderAdminProductsGrid();
-            window.saveDataToCloud();
+            window.savePartialToCloud({ categories });
         }
 
         window.addNewProduct = function() {
@@ -2577,7 +2773,7 @@
             stockData[newId] = 50;
             renderAdminProductsGrid();
             renderPosGrid();
-            window.saveDataToCloud();
+            window.savePartialToCloud({ products, stockData: { [newId]: 50 } });
         }
 
         window.deleteProduct = function(id) {
@@ -2585,7 +2781,7 @@
                 products = products.filter(p => p.id !== id);
                 renderAdminProductsGrid();
                 renderPosGrid();
-                window.saveDataToCloud();
+                window.savePartialToCloud({ products });
             }
         }
 
@@ -2599,9 +2795,9 @@
 
                 clearTimeout(productSaveTimer);
                 if (immediate) {
-                    window.saveDataToCloud();
+                    window.savePartialToCloud({ products });
                 } else {
-                    productSaveTimer = setTimeout(() => window.saveDataToCloud(), 500);
+                    productSaveTimer = setTimeout(() => window.savePartialToCloud({ products }), 500);
                 }
             }
         }
@@ -2640,6 +2836,9 @@
         function renderStockTable() {
             const tbody = document.getElementById('stock-tbody');
             if (!tbody) return;
+            if (tbody.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') {
+                return;
+            }
             tbody.innerHTML = '';
             products.forEach(p => {
                 const stock = stockData[p.id] !== undefined ? stockData[p.id] : 50;
@@ -2677,7 +2876,7 @@
         window.deleteSingleStockLog = function(index) {
             if (!stockAdminUnlocked) return;
             stockLog.splice(index, 1);
-            window.saveDataToCloud();
+            window.savePartialToCloud({ stockLog });
         }
 
         function renderJournal() {
@@ -2732,10 +2931,10 @@
 
         window.resetData = function() {
             if (!currentWaiter || !currentWaiter.isAdmin) return;
-            if (confirm("Sicher? ALLES wird gelöscht.")) {
+            if (confirm("Sicher? Umsatz, Kassenbuch und Logs werden zurückgesetzt (Produkte & Firmendaten bleiben erhalten).")) {
                 totalRevenue = 0; salesJournal = []; itemCounts = {}; stockLog = []; loginLog = []; manualStockHistory = []; happyHourSchedules = []; isHappyHour = false; activeDiscounts = {}; individualDiscountsValues = {};
                 companySettings.receiptCounter = 1;
-                window.saveDataToCloud();
+                window.manualCloudSaveAll();
             }
         }
 
