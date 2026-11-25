@@ -1068,10 +1068,10 @@
         <span>Umsatz heute: <strong id="total-revenue">0,00 €</strong></span>
     </footer>
 
-    <!-- Firebase SDKs -->
+        <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { initializeFirestore, doc, getDoc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeFirestore, doc, getDocFromServer, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDSZ2r9G9328WMfL_KFZr0JqvrEVGmpdxo",
@@ -1083,9 +1083,8 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        // HTTP Long-Polling erzwingen, damit Safari, iPhone und iCloud Private Relay Live-Updates nicht blockieren
         const db = initializeFirestore(app, {
-            experimentalForceLongPolling: true
+            experimentalAutoDetectLongPolling: true
         });
         const kasseDocRef = doc(db, "kasse", "data");
 
@@ -1120,7 +1119,6 @@
             receiptFooter: "Vielen Dank für Ihren Besuch!"
         };
 
-        // Synchronisierte globale Daten (alles außer Warenkörben)
         let totalRevenue = 0;
         let salesJournal = []; 
         let itemCounts = {};   
@@ -1136,7 +1134,6 @@
         let lastUpdatedAt = "";
         let lastUpdatedBy = "";
 
-        // Rein lokale Geräte-Daten (NICHT synchronisiert)
         let cart = [];
         let selectedDiscount = null;
         let currentMultiplier = 1;
@@ -1144,12 +1141,10 @@
         let stockAdminUnlocked = false;
         let currentViewedReceiptOrder = null;
 
-        // Sync-Status & Schreibschutz
         let hasLoadedFromCloud = false;
         let isWritingToCloud = false;
         let productSaveTimer = null;
 
-        // Feste Accounts (Admins + Kellner 1 bis 10)
         const authorizedWaiters = {
             "Jonas(Admin)": { name: "Jonas", pass: "2027", isAdmin: true },
             "Julian(Admin)": { name: "Julian", pass: "2027", isAdmin: true },
@@ -1165,9 +1160,6 @@
             "Kellner010": { name: "Kellner 10", pass: "5671", isAdmin: false }
         };
 
-        // ==========================================
-        // QR-CODE BELEG MODUS (Wenn Kunde QR scannt)
-        // ==========================================
         function checkPublicReceiptMode() {
             const params = new URLSearchParams(window.location.search);
             const belegParam = params.get('beleg');
@@ -1255,7 +1247,6 @@
             updateKasseActiveStatusLabel();
             populateCompanySettingsForm();
 
-            // Alle Ansichten live aktualisieren (lokaler Warenkorb bleibt unberührt)
             renderPosGrid();
             renderStockTable();
             renderStockLog();
@@ -1273,7 +1264,7 @@
 
             const stampInfo = lastUpdatedAt
                 ? `Letzter Cloud-Stand: ${lastUpdatedAt} Uhr${lastUpdatedBy ? ' (' + lastUpdatedBy + ')' : ''}`
-                : 'Cloud-Sync aktiv (noch keine Änderungen gespeichert)';
+                : 'Cloud-Sync: Verbunden';
             setSyncStatus(stampInfo, false);
         }
 
@@ -1294,59 +1285,48 @@
         window.forceCloudRefresh = async function() {
             if (isWritingToCloud) return;
             try {
-                const snap = await getDoc(kasseDocRef);
+                const snap = await getDocFromServer(kasseDocRef);
                 if (snap.exists()) {
                     applyCloudSnapshotData(snap.data());
                     hasLoadedFromCloud = true;
                 }
             } catch (err) {
-                console.error("Abruf-Fehler:", err);
-                setSyncStatus("Cloud-Verbindungsfehler: " + err.message, true);
+                console.warn("Server-Abruf wartet auf Verbindung:", err.message);
             }
         }
 
-        async function initApp() {
+        function initApp() {
             if (checkPublicReceiptMode()) return;
 
             products.forEach(p => { 
                 if (stockData[p.id] === undefined) stockData[p.id] = 50; 
             });
 
-            // 1. Sofort einmal den Server-Stand abrufen
-            await window.forceCloudRefresh();
-
-            // 2. Echtzeit-Listener über HTTP Long-Polling
-            onSnapshot(kasseDocRef, (docSnap) => {
+            // onSnapshot wartet automatisch bis die Verbindung online ist, ohne offline-Fehler zu werfen
+            onSnapshot(kasseDocRef, { includeMetadataChanges: true }, (docSnap) => {
                 if (docSnap.exists() && !isWritingToCloud) {
                     applyCloudSnapshotData(docSnap.data());
                     hasLoadedFromCloud = true;
+                } else if (!docSnap.exists() && !docSnap.metadata.fromCache) {
+                    hasLoadedFromCloud = true;
+                    setSyncStatus("Cloud-Sync: Verbunden (bereit zum Speichern)", false);
                 }
             }, (error) => {
                 console.error("Firebase Sync Fehler:", error);
                 setSyncStatus("Cloud-Verbindungsfehler: " + error.message, true);
             });
 
-            // 3. Zusätzlicher 4-Sekunden-Fallback-Sync für iPhone/Safari
             setInterval(() => {
-                if (!document.hidden && !isWritingToCloud) {
+                if (!document.hidden && !isWritingToCloud && hasLoadedFromCloud) {
                     window.forceCloudRefresh();
                 }
-            }, 4000);
+            }, 5000);
 
             updateClock();
             setInterval(updateClock, 1000);
         }
 
-        // Gezieltes Speichern einzelner Bereiche mit gemeinsamem Server-Zeitstempel
         window.savePartialToCloud = async function(partialData) {
-            if (!hasLoadedFromCloud) {
-                await window.forceCloudRefresh();
-                if (!hasLoadedFromCloud) {
-                    alert("Keine Verbindung zur Cloud möglich. Bitte Internetverbindung und Firebase-Regeln prüfen.");
-                    return;
-                }
-            }
-
             isWritingToCloud = true;
             const nowTime = new Date().toLocaleTimeString('de-DE');
             const actorName = currentWaiter ? currentWaiter.name : 'System';
@@ -1359,6 +1339,7 @@
 
             try {
                 await setDoc(kasseDocRef, cleanPartial, { merge: true });
+                hasLoadedFromCloud = true;
                 lastUpdatedAt = nowTime;
                 lastUpdatedBy = actorName;
                 setSyncStatus(`Letzter Cloud-Stand: ${nowTime} Uhr (${actorName})`, false);
@@ -1371,7 +1352,6 @@
             }
         }
 
-        // Komplettspeicherung (alle Daten außer lokalen Warenkörben)
         window.manualCloudSaveAll = async function(silent = false) {
             isWritingToCloud = true;
             const nowTime = new Date().toLocaleTimeString('de-DE');
@@ -1418,9 +1398,6 @@
             }
         }
 
-        // ==========================================
-        // NAVIGATION & ADMIN-APPS
-        // ==========================================
         window.switchView = function(viewName) {
             if (viewName === 'admin' && (!currentWaiter || !currentWaiter.isAdmin)) {
                 alert("Keine Admin-Berechtigung!");
@@ -1507,9 +1484,6 @@
             window.savePartialToCloud({ kasseActive });
         }
 
-        // ==========================================
-        // MANUELLER LAGER-ABZUG & RÜCKGÄNGIG FÜR KELLNER
-        // ==========================================
         window.openManualStockModal = function() {
             renderManualStockModalContent();
             openModal('manual-stock-modal');
@@ -1674,9 +1648,6 @@
             }
         }
 
-        // ==========================================
-        // LAGER ADMIN MODUS
-        // ==========================================
         window.unlockStockAdminMode = function() {
             const pass = prompt("Bitte Admin-Passwort eingeben:");
             let matchedAdmin = false;
@@ -1729,9 +1700,6 @@
             }
         }
 
-        // ==========================================
-        // RABATT-VERWALTUNG & RABATT-AUSWAHLFENSTER
-        // ==========================================
         window.addDiscountPreset = function() {
             const name = document.getElementById('new-discount-name').value.trim();
             const percent = parseFloat(document.getElementById('new-discount-percent').value);
@@ -1851,9 +1819,6 @@
             updateCartUI();
         }
 
-        // ==========================================
-        // BELEG & FIRMENDATEN (KLEINBETRAGSRECHNUNG)
-        // ==========================================
         function populateCompanySettingsForm() {
             const setVal = (id, val) => {
                 const el = document.getElementById(id);
@@ -2111,9 +2076,6 @@
             link.click();
         }
 
-        // ==========================================
-        // EXCEL EXPORT (.XLSX)
-        // ==========================================
         window.exportToExcel = function() {
             if (salesJournal.length === 0) {
                 alert("Keine Verkaufsdaten im Kassenbuch vorhanden.");
@@ -2217,9 +2179,6 @@
             XLSX.writeFile(wb, `Kassenbuch_AbiBar_${dateStr}.xlsx`);
         }
 
-        // ==========================================
-        // KELLNER ANZEIGE (Feste Accounts)
-        // ==========================================
         function renderWaitersTable() {
             const tbody = document.getElementById('waiters-tbody');
             if (!tbody) return;
@@ -2233,9 +2192,6 @@
             }
         }
 
-        // ==========================================
-        // HAPPY HOUR LOGIK
-        // ==========================================
         window.toggleGlobalHappyHour = function(checked) {
             isHappyHour = checked;
             if (checked && Object.keys(activeDiscounts).length === 0) {
@@ -2375,9 +2331,6 @@
             window.savePartialToCloud({ happyHourSchedules });
         }
 
-        // ==========================================
-        // KASSEN / POS LOGIK (Warenkorb bleibt lokal)
-        // ==========================================
         function getEffectivePrice(product) {
             if (isHappyHour && activeDiscounts[product.id]) {
                 const discount = activeDiscounts[product.id];
@@ -2509,9 +2462,6 @@
             window.calculateChange();
         }
 
-        // ==========================================
-        // LOGIN / LOGOUT / CHECKOUT (TRANSAKTIONEN)
-        // ==========================================
         window.performLogin = async function() {
             const id = document.getElementById('login-id').value.trim();
             const pass = document.getElementById('login-pass').value.trim();
@@ -2520,10 +2470,6 @@
             if (!waiter || waiter.pass !== pass) {
                 alert("Fehler: Unbekannte ID oder falsches Passwort!");
                 return;
-            }
-
-            if (!hasLoadedFromCloud) {
-                await window.forceCloudRefresh();
             }
 
             currentWaiter = { name: waiter.name, id: id, isAdmin: waiter.isAdmin };
@@ -2555,10 +2501,9 @@
                     }, { merge: true });
                 });
             } catch (e) {
-                console.warn("Login-Log konnte nicht geschrieben werden:", e);
+                console.warn("Login-Log wartet auf Verbindung:", e.message);
             } finally {
                 isWritingToCloud = false;
-                await window.forceCloudRefresh();
             }
         }
 
@@ -2591,7 +2536,6 @@
             } catch (e) {
             } finally {
                 isWritingToCloud = false;
-                await window.forceCloudRefresh();
             }
         }
 
@@ -2647,7 +2591,6 @@
             const clockStr = now.toLocaleTimeString('de-DE');
             const timeStr = now.toLocaleDateString('de-DE') + ' um ' + clockStr;
 
-            // Lokalen Warenkorb sofort leeren
             cart = [];
             selectedDiscount = null;
             updateCartUI();
@@ -2825,9 +2768,6 @@
             }
         }
 
-        // ==========================================
-        // PRODUKTE & KATEGORIEN BEARBEITEN
-        // ==========================================
         window.addCategory = function() {
             const catName = document.getElementById('new-cat-name').value.trim();
             if (!catName || categories.includes(catName)) { alert("Ungültig oder vorhanden."); return; }
