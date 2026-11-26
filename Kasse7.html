@@ -2,18 +2,14 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Abi-Kassensystem | Apple Style</title>
-
-    <!-- SheetJS für echten Excel (.xlsx) Export -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <!-- QRCode.js für Beleg-QR-Codes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
-            --bg-color: #f5f5f7;
-            --card-bg: #ffffff;
+            --bg-main: #f5f5f7;
+            --bg-card: #ffffff;
             --text-main: #1d1d1f;
             --text-secondary: #86868b;
             --accent: #0071e3;
@@ -22,835 +18,1152 @@
             --danger: #ff3b30;
             --warning: #ff9500;
             --purple: #af52de;
-            --border-radius: 14px;
-            --shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            --border-color: #d2d2d7;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --radius-md: 14px;
+            --radius-lg: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
             margin: 0;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            box-sizing: border-box;
-            -webkit-font-smoothing: antialiased;
         }
 
         /* Login Overlay */
         #login-overlay {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.35);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            inset: 0;
+            background: rgba(245, 245, 247, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
 
-        .login-box {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(30px);
-            padding: 40px;
-            border-radius: 22px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
-            width: 340px;
+        .login-card {
+            background: var(--bg-card);
+            padding: 36px 32px;
+            border-radius: 24px;
+            box-shadow: var(--shadow-md);
+            width: 100%;
+            max-width: 380px;
             text-align: center;
-            border: 1px solid rgba(255,255,255,0.6);
+            border: 1px solid rgba(0,0,0,0.06);
         }
 
-        .login-box h2 {
-            margin-top: 0;
-            font-weight: 600;
-            letter-spacing: -0.5px;
+        .login-card h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .login-card p {
+            margin: 0 0 24px 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
         }
 
         .login-input {
             width: 100%;
-            padding: 12px 16px;
-            margin: 8px 0;
-            background: #e3e3e8;
-            border: none;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            box-sizing: border-box;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: #fbfbfd;
             color: var(--text-main);
             outline: none;
-            transition: all 0.2s;
-        }
-        .login-input:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .login-input:focus:not(:disabled) {
-            background: #fff;
-            box-shadow: 0 0 0 3px rgba(0,113,227,0.3);
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        /* Modals */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.45);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .modal-overlay.active {
-            display: flex;
-        }
-        .modal-card {
+        .login-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
             background: #ffffff;
-            border-radius: 22px;
-            padding: 28px;
-            width: 100%;
-            max-width: 540px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
-            position: relative;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #f0f0f2;
-            padding-bottom: 14px;
-            margin-bottom: 18px;
-        }
-        .modal-header h3 {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-        .modal-close-btn {
-            background: #e3e3e8;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
+        /* Header */
         header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
             display: flex;
+            flex-wrap: wrap;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            background: var(--card-bg);
-            padding: 14px 22px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            margin-bottom: 18px;
-            flex-wrap: wrap;
             gap: 12px;
         }
 
-        h1 {
-            margin: 0;
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .brand-title {
+            font-weight: 700;
             font-size: 1.15rem;
-            font-weight: 600;
-            letter-spacing: -0.3px;
+            letter-spacing: -0.02em;
         }
 
-        .header-controls {
+        .tab-nav {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .nav-tabs {
-            display: flex;
-            gap: 6px;
-            background: #e3e3e8;
-            padding: 4px;
-            border-radius: 10px;
+            background: #e8e8ed;
+            padding: 3px;
+            border-radius: 11px;
+            gap: 4px;
         }
 
         .tab-btn {
-            background: transparent;
             border: none;
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 0.85rem;
+            background: transparent;
+            padding: 7px 16px;
+            border-radius: 9px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
             cursor: pointer;
-            color: var(--text-main);
             transition: all 0.2s;
         }
 
         .tab-btn.active {
             background: #ffffff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            color: var(--text-main);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+        }
+
+        .badge-status-inactive {
+            background: #f2f2f7;
+            color: var(--text-secondary);
+            padding: 5px 11px;
+            border-radius: 20px;
             font-weight: 600;
         }
 
-        .toggle-container {
-            display: flex;
+        .badge-status-active {
+            background: #fff3cd;
+            color: #b45309;
+            padding: 5px 11px;
+            border-radius: 20px;
+            font-weight: 700;
+            animation: pulseBadge 2s infinite;
+        }
+
+        @keyframes pulseBadge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.78; }
+        }
+
+        /* Buttons */
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #e8e8ed;
+            color: var(--text-main);
+            transition: transform 0.1s, opacity 0.2s, background 0.2s;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
+            justify-content: center;
+            gap: 6px;
         }
 
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
+        .btn:active:not(:disabled) {
+            transform: scale(0.98);
         }
 
-        .switch input { opacity: 0; width: 0; height: 0; }
-
-        .slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #d1d1d6; transition: .3s; border-radius: 24px;
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
         }
 
-        .slider:before {
-            position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px;
-            background-color: white; transition: .3s; border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        .btn-primary {
+            background: var(--accent);
+            color: #ffffff;
         }
 
-        input:checked + .slider { background-color: var(--success); }
-        input:checked + .slider.happy-hour-slider { background-color: var(--warning); }
-        input:checked + .slider:before { transform: translateX(20px); }
-
-        .view-section { display: none; flex: 1; overflow: hidden; flex-direction: column; }
-        .view-section.active { display: flex; }
-
-        .main-container {
-            display: grid; grid-template-columns: 2fr 1fr; gap: 20px; flex: 1; overflow: hidden;
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
         }
 
-        .section {
-            background: var(--card-bg); border-radius: var(--border-radius); padding: 20px;
-            box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+        .btn-success {
+            background: var(--success);
+            color: #ffffff;
         }
 
-        .section-title {
-            font-size: 1.1rem; font-weight: 600; margin-top: 0; margin-bottom: 15px;
-            letter-spacing: -0.2px; border-bottom: 1px solid #f0f0f2; padding-bottom: 10px;
+        .btn-danger {
+            background: var(--danger);
+            color: #ffffff;
         }
 
-        .multiplier-bar {
+        .btn-warning {
+            background: var(--warning);
+            color: #ffffff;
+        }
+
+        .btn-info {
+            background: #5ac8fa;
+            color: #ffffff;
+        }
+
+        /* Main Views */
+        main {
+            flex: 1;
+            padding: 20px;
+            max-width: 1440px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        /* POS Layout */
+        .pos-layout {
+            display: grid;
+            grid-template-columns: 1fr 390px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        @media (max-width: 960px) {
+            .pos-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .pos-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            background: var(--bg-card);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .multiplier-group {
             display: flex;
             gap: 6px;
-            overflow-x: auto;
-            padding-bottom: 12px;
-            margin-bottom: 12px;
-            border-bottom: 1px solid #f0f0f2;
+            flex-wrap: wrap;
         }
 
         .multiplier-btn {
-            background: #f0f0f2;
-            border: 1px solid #d1d1d6;
-            border-radius: 8px;
-            padding: 6px 12px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: #fbfbfd;
             color: var(--text-main);
-            transition: all 0.2s;
-            white-space: nowrap;
+            border-radius: 10px;
+            padding: 8px 13px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
         }
 
-        .multiplier-btn:hover { background: #e3e3e8; }
-        .multiplier-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .multiplier-btn.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+        }
 
-        .pos-container { overflow-y: auto; flex: 1; padding-right: 5px; }
+        .category-group {
+            margin-bottom: 22px;
+        }
 
-        .category-group { margin-bottom: 20px; }
-        .category-title { font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 12px; }
+        .category-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--text-main);
+            padding-left: 4px;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+        }
 
         .product-btn {
-            background: #fafafa; border: 1px solid #e5e5ea; border-radius: 12px; padding: 14px 10px;
-            text-align: center; cursor: pointer; transition: all 0.2s ease; display: flex;
-            flex-direction: column; justify-content: center; gap: 6px; height: 82px; position: relative;
-        }
-
-        .product-btn:hover { border-color: var(--accent); background: #f0f6ff; transform: scale(1.02); }
-        .product-btn.sold-out { background: #e5e5ea; border-color: #d1d1d6; opacity: 0.5; cursor: not-allowed; transform: none !important; }
-
-        .product-name { font-weight: 600; font-size: 0.95rem; }
-        .product-price { color: var(--accent); font-weight: 600; font-size: 1.05rem; }
-        .product-price.discounted { color: var(--warning); }
-        .old-price { text-decoration: line-through; font-size: 0.75rem; color: var(--text-secondary); margin-right: 4px; }
-
-        /* Admin iOS App Grid */
-        .ios-app-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
-            gap: 22px;
-            padding: 15px 5px;
-        }
-        .ios-app-tile {
+            background: var(--bg-card);
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: var(--radius-md);
+            padding: 16px 12px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
+            justify-content: space-between;
+            min-height: 92px;
+            transition: transform 0.12s, box-shadow 0.2s;
             user-select: none;
-            transition: transform 0.18s ease;
         }
-        .ios-app-tile:hover { transform: scale(1.05); }
-        .ios-app-tile:active { transform: scale(0.95); }
-        .ios-app-icon {
-            width: 74px;
-            height: 74px;
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.1rem;
-            color: white;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+
+        .product-btn:hover:not(.sold-out) {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
         }
-        .ios-app-label {
-            font-size: 0.85rem;
+
+        .product-btn:active:not(.sold-out) {
+            transform: scale(0.97);
+        }
+
+        .product-btn.sold-out {
+            opacity: 0.42;
+            cursor: not-allowed;
+            background: #ececef;
+        }
+
+        .product-name {
             font-weight: 600;
-            color: var(--text-main);
+            font-size: 0.98rem;
+            margin-bottom: 8px;
+            line-height: 1.25;
+        }
+
+        .product-price {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--accent);
+        }
+
+        .product-price.discounted {
+            color: var(--success);
+        }
+
+        .old-price {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            margin-right: 6px;
+            font-weight: 500;
+        }
+
+        /* Cart Card */
+        .cart-panel {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 76px;
+        }
+
+        .cart-panel h3 {
+            margin: 0 0 14px 0;
+            font-size: 1.15rem;
+        }
+
+        #cart-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 16px 0;
+            max-height: 290px;
+            overflow-y: auto;
+            border-top: 1px solid #f0f0f3;
+            border-bottom: 1px solid #f0f0f3;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 4px;
+            border-bottom: 1px solid #f5f5f7;
+            font-size: 0.94rem;
+        }
+
+        .cart-item button {
+            background: #fee2e2;
+            color: var(--danger);
+            border: none;
+            border-radius: 7px;
+            padding: 4px 8px;
+            font-weight: 700;
+            margin-left: 8px;
+            cursor: pointer;
+        }
+
+        .cart-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .change-box {
+            display: none;
+            background: #f5f5f7;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 10px;
+            margin-bottom: 12px;
+        }
+
+        .change-box.active {
+            display: block;
+        }
+
+        .quick-cash-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin: 8px 0;
+        }
+
+        /* Admin Dashboard */
+        .admin-top-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .admin-metric-card {
+            background: var(--bg-card);
+            padding: 18px 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .admin-metric-card span.label {
+            font-size: 0.84rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .admin-metric-card .big-num {
+            font-size: 1.7rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        #admin-apps-home {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .admin-app-tile {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 22px 18px;
+            width: 175px;
             text-align: center;
-            line-height: 1.2;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.2s;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .admin-app-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .admin-app-tile .icon {
+            font-size: 2.1rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .admin-app-tile .title {
+            font-weight: 600;
+            font-size: 0.95rem;
         }
 
         .admin-app-view {
             display: none;
-            flex-direction: column;
-            flex: 1;
-            overflow-y: auto;
-            padding-right: 5px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
         }
-        .admin-app-view.active { display: flex; }
-        .admin-app-topbar {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 18px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #f0f0f2;
-        }
-        .ios-back-btn {
-            background: #f0f0f2;
-            border: none;
-            color: var(--accent);
-            font-weight: 600;
-            font-size: 0.9rem;
-            padding: 8px 14px;
-            border-radius: 10px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .ios-back-btn:hover { background: #e3e3e8; }
 
-        .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; overflow-y: auto; max-height: 520px; padding: 12px; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 14px; margin-bottom: 15px; }
-        .admin-product-card { background: #ffffff; border: 1px solid #d1d1d6; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.04); }
-        .admin-product-card input, .admin-product-card select {
+        .admin-app-view.active {
+            display: block;
+        }
+
+        .admin-app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #ececef;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 11px 12px;
+            border-bottom: 1px solid #efeff4;
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* Admin Products Grid */
+        #admin-products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        .admin-product-card {
+            position: relative;
+            background: #fbfbfd;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .admin-product-card input,
+        .admin-product-card select {
+            width: 100%;
             padding: 8px 10px;
             border: 1px solid #d1d1d6;
-            border-radius: 8px;
-            font-size: 0.88rem;
-            background: #fafafa;
-        }
-        .admin-delete-badge { position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(255,59,48,0.4); }
-
-        .admin-sub-btn { background: #e3e3e8; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: var(--text-main); transition: all 0.2s; }
-        .admin-sub-btn.active { background: var(--accent); color: white; }
-
-        .cart-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; border: 1px solid #e5e5ea; border-radius: 10px; background: #fafafa; }
-        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e5e5ea; font-size: 0.9rem; }
-        .cart-item button { background: var(--danger); color: white; border: none; border-radius: 6px; padding: 2px 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
-
-        .total-container { margin-top: 12px; font-size: 1.25rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; background: #f0f6ff; padding: 12px 16px; border-radius: 10px; color: var(--accent); }
-        
-        .change-calculator { display: none; margin-top: 10px; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 10px; padding: 10px; }
-        .change-calculator.active { display: block; }
-        .change-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.9rem; }
-        .cash-buttons { display: flex; gap: 5px; margin-bottom: 8px; }
-        .cash-btn { flex: 1; background: #e3e3e8; border: none; padding: 6px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; transition: background 0.2s; }
-        .change-result { font-weight: 600; color: var(--success); font-size: 1.05rem; text-align: right; }
-
-        .checkout-actions { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-        .checkout-row { display: flex; gap: 8px; }
-
-        .btn { padding: 10px 16px; border: none; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: white; transition: opacity 0.2s, transform 0.1s; }
-        .btn:active { transform: scale(0.98); }
-        .btn-primary { background: var(--accent); }
-        .btn-success { background: var(--success); }
-        .btn-danger { background: var(--danger); }
-        .btn-warning { background: var(--warning); color: #fff; }
-        .btn-info { background: #0071e3; }
-        .btn-purple { background: var(--purple); }
-        .btn-dark { background: #1d1d1f; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        .table-container { overflow-y: auto; max-height: 350px; border: 1px solid #e5e5ea; border-radius: 12px; margin-bottom: 15px; background: #fafafa; }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
-        th, td { padding: 10px 14px; border-bottom: 1px solid #e5e5ea; }
-        th { background: #f0f0f2; font-weight: 600; position: sticky; top: 0; z-index: 10; color: var(--text-secondary); }
-
-        .badge-status-active { background: var(--success); color: white; padding: 4px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; }
-        .badge-status-inactive { background: var(--danger); color: white; padding: 4px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; }
-
-        .radio-group { display: flex; gap: 15px; margin-bottom: 10px; font-weight: 500; font-size: 0.9rem; }
-        
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat-card { background: #fafafa; border: 1px solid #e5e5ea; border-radius: 12px; padding: 14px; }
-        .stat-card h4 { margin: 0 0 4px 0; color: var(--text-secondary); font-size: 0.8rem; font-weight: 500; }
-        .stat-card .value { font-size: 1.2rem; font-weight: 600; color: var(--accent); }
-
-        /* Beleg-Vorschau Styling */
-        .receipt-paper {
+            border-radius: 9px;
+            font-size: 0.9rem;
             background: #ffffff;
-            border: 1px dashed #c7c7cc;
+        }
+
+        .admin-delete-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: none;
+            background: var(--danger);
+            color: #ffffff;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* Stats Grid */
+        #stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 14px;
+        }
+
+        .stat-card {
+            background: #fbfbfd;
+            border: 1px solid #e5e5ea;
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .stat-card h4 {
+            margin: 0 0 6px 0;
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-card .value {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        /* Happy Hour Tabs */
+        .hh-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .admin-hh-tab-btn {
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: #fbfbfd;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .admin-hh-tab-btn.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 5000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: var(--bg-card);
+            border-radius: 22px;
+            padding: 24px;
+            width: 100%;
+            max-width: 520px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Receipt Styling */
+        .receipt-box {
+            background: #ffffff;
+            border: 1px dashed #86868b;
             border-radius: 12px;
-            padding: 22px;
-            font-family: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
+            padding: 18px;
+            font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
             font-size: 0.84rem;
             color: #1d1d1f;
-            line-height: 1.45;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
         }
-        .receipt-paper h4 { margin: 0 0 4px 0; font-size: 1.05rem; text-align: center; }
-        .receipt-center { text-align: center; }
-        .receipt-divider { border-top: 1px dashed #86868b; margin: 10px 0; }
-        .receipt-line { display: flex; justify-content: space-between; gap: 10px; }
 
-        /* Standalone Kunden-Belegansicht (via QR-Code Scan) */
-        #public-receipt-view {
+        .receipt-center {
+            text-align: center;
+        }
+
+        .receipt-center h4 {
+            margin: 0 0 4px 0;
+            font-size: 1.05rem;
+        }
+
+        .receipt-divider {
+            border-top: 1px dashed #86868b;
+            margin: 10px 0;
+        }
+
+        .receipt-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 3px;
+        }
+
+        /* Public Receipt View */
+        .public-receipt-view {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-color);
-            z-index: 20000;
+            inset: 0;
+            background: var(--bg-main);
+            z-index: 10000;
             overflow-y: auto;
-            padding: 24px;
-            box-sizing: border-box;
-            justify-content: center;
-            align-items: flex-start;
+            padding: 24px 16px;
         }
-        #public-receipt-view.active { display: flex; }
 
-        footer { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary); flex-wrap: wrap; gap: 8px; }
+        .public-receipt-view.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-        @media print {
-            body * { visibility: hidden; }
-            #printable-receipt-area, #printable-receipt-area * { visibility: visible; }
-            #printable-receipt-area {
-                position: fixed;
-                left: 0;
-                top: 0;
-                width: 100%;
-                border: none;
-                box-shadow: none;
-            }
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #d1d1d6;
+            transition: .3s;
+            border-radius: 28px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+
+        input:checked + .slider {
+            background-color: var(--success);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-card);
+            border-top: 1px solid rgba(0,0,0,0.08);
+            padding: 10px 20px;
+            font-size: 0.82rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            color: var(--text-secondary);
         }
     </style>
 </head>
 <body>
 
-    <!-- Öffentliche Beleg-Ansicht beim Scannen des QR-Codes -->
-    <div id="public-receipt-view">
-        <div style="width: 100%; max-width: 440px; margin: 0 auto;">
-            <div style="text-align: center; margin-bottom: 16px;">
-                <h2 style="margin: 0; font-size: 1.3rem;">Digitaler Kassenbeleg</h2>
-                <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">Kleinbetragsrechnung nach § 33 UStDV</p>
-            </div>
-            <div id="public-receipt-container" class="receipt-paper"></div>
-            <div style="display: flex; gap: 10px; margin-top: 16px;">
-                <button class="btn btn-primary" style="flex: 1;" onclick="downloadReceiptImage(true)">📥 Als Bild speichern</button>
-                <button class="btn btn-dark" style="flex: 1;" onclick="window.print()">🖨️ Drucken / PDF</button>
-            </div>
+    <!-- Öffentliche Belegansicht (QR-Code) -->
+    <div id="public-receipt-view" class="public-receipt-view">
+        <div style="width: 100%; max-width: 420px;">
+            <div id="public-receipt-container" class="receipt-box" style="box-shadow: var(--shadow-md);"></div>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 16px; padding: 14px;" onclick="window.downloadReceiptImage(true)">
+                📥 Beleg als Bild speichern
+            </button>
         </div>
     </div>
 
     <!-- Login Overlay -->
     <div id="login-overlay">
-        <div class="login-box">
-            <h2>Abi-Bar Login</h2>
-            <p style="font-size: 0.85rem; color: var(--text-secondary);">Bitte ID und Passwort eingeben.</p>
-            <input type="text" id="login-id" class="login-input" placeholder="ID (z.B. Jonas(Admin) oder Kellner001)" style="text-align: center;">
-            <input type="password" id="login-pass" class="login-input" placeholder="Passwort" style="text-align: center;" onkeydown="if(event.key==='Enter') performLogin()">
-            <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" onclick="performLogin()">Einloggen</button>
+        <div class="login-card">
+            <h2>Abi-Kassensystem</h2>
+            <p>Bitte mit Kellner- oder Admin-ID anmelden</p>
+            <input type="text" id="login-id" class="login-input" placeholder="Benutzer-ID (z. B. Jonas(Admin))" autocomplete="username" onkeydown="if(event.key==='Enter') window.performLogin()">
+            <input type="password" id="login-pass" class="login-input" placeholder="Passwort" autocomplete="current-password" onkeydown="if(event.key==='Enter') window.performLogin()">
+            <button class="btn btn-primary" style="width: 100%; padding: 13px; font-size: 1rem; margin-top: 6px;" onclick="window.performLogin()">Anmelden</button>
         </div>
     </div>
 
-    <!-- Modal 1: Manueller Lagerabzug für Kellner -->
-    <div id="manual-stock-modal" class="modal-overlay" onclick="if(event.target===this) closeModal('manual-stock-modal')">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h3>📦 Manueller Lager-Abzug</h3>
-                <button class="modal-close-btn" onclick="closeModal('manual-stock-modal')">×</button>
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0;">
-                Hier können verbrauchte Artikel (nur bei Produkten mit manueller Lagerführung) abgezogen werden. Eine Erhöhung ist nur im Adminbereich möglich.
-            </p>
-            <div style="margin-bottom: 14px;">
-                <button class="btn btn-warning" id="undo-manual-stock-btn" style="width: 100%;" onclick="undoLastManualStock()" disabled>
-                    ↩️ Letzte Entfernung rückgängig machen
-                </button>
-                <div id="undo-info-text" style="font-size: 0.78rem; color: var(--text-secondary); text-align: center; margin-top: 4px;"></div>
-            </div>
-            <div class="table-container" style="max-height: 340px; margin-bottom: 0;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Artikel</th>
-                            <th>Bestand</th>
-                            <th style="text-align: right;">Abziehen</th>
-                        </tr>
-                    </thead>
-                    <tbody id="manual-stock-modal-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal 2: Rabatt auswählen -->
-    <div id="discount-modal" class="modal-overlay" onclick="if(event.target===this) closeModal('discount-modal')">
-        <div class="modal-card" style="max-width: 420px;">
-            <div class="modal-header">
-                <h3>🏷️ Rabatt auswählen</h3>
-                <button class="modal-close-btn" onclick="closeModal('discount-modal')">×</button>
-            </div>
-            <div id="discount-modal-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
-        </div>
-    </div>
-
-    <!-- Modal 3: Beleg-Vorschau & QR-Code -->
-    <div id="receipt-modal" class="modal-overlay" onclick="if(event.target===this) closeModal('receipt-modal')">
-        <div class="modal-card" style="max-width: 480px;">
-            <div class="modal-header">
-                <h3>🧾 Kassenbeleg & QR-Code</h3>
-                <button class="modal-close-btn" onclick="closeModal('receipt-modal')">×</button>
-            </div>
-
-            <div id="printable-receipt-area">
-                <div id="receipt-preview-box" class="receipt-paper"></div>
-            </div>
-
-            <div style="margin-top: 18px; text-align: center; background: #fafafa; border: 1px solid #e5e5ea; border-radius: 14px; padding: 16px;">
-                <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 8px;">📱 QR-Code zum Download auf das Handy:</div>
-                <div id="receipt-qrcode" style="display: flex; justify-content: center; margin: 10px auto;"></div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary);">Einfach mit der Smartphone-Kamera scannen</div>
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-top: 16px;">
-                <button class="btn btn-primary" style="flex: 1;" onclick="downloadReceiptImage(false)">📥 Beleg herunterladen</button>
-                <button class="btn btn-dark" style="flex: 1;" onclick="window.print()">🖨️ Drucken / PDF</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Header -->
     <header>
-        <div>
-            <h1>Angemeldet: <span id="current-waiter-display" style="color: var(--success); font-weight: 600;">--</span></h1>
-            <span id="current-datetime" style="font-size: 0.8rem; color: var(--text-secondary);">--.--.----, --:--:--</span>
+        <div class="header-left">
+            <span class="brand-title">🍸 Abi-Kassensystem</span>
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="window.switchView('pos')">Kasse</button>
+                <button class="tab-btn" id="admin-tab-btn" style="display: none;" onclick="window.switchView('admin')">Admin</button>
+            </div>
         </div>
-        <div class="header-controls">
-            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="performLogout()">Abmelden</button>
-            <button class="btn btn-dark" style="padding: 6px 12px; font-size: 0.8rem;" onclick="openManualStockModal()">📦 Lager-Abzug</button>
-            <div class="toggle-container">
-                <span id="header-hh-status" class="badge-status-inactive" style="padding: 4px 10px; border-radius: 8px; font-size: 0.8rem;">Happy Hour: Inaktiv</span>
-            </div>
-            <div class="toggle-container">
-                <span>Rückgeld</span>
-                <label class="switch">
-                    <input type="checkbox" id="change-toggle" onchange="toggleChangeCalculator()">
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="nav-tabs">
-                <button class="tab-btn active" onclick="switchView('pos')">Kasse</button>
-                <button class="tab-btn" id="admin-tab-btn" onclick="switchView('admin')" style="color: #991b1b; display: none;">🔒 Admin</button>
-            </div>
+        <div class="header-right">
+            <span id="header-hh-status" class="badge-status-inactive">Happy Hour: Inaktiv</span>
+            <span id="current-datetime" style="color: var(--text-secondary);"></span>
+            <strong id="current-waiter-display">Nicht angemeldet</strong>
+            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.82rem;" onclick="window.performLogout()">Abmelden</button>
         </div>
     </header>
 
-    <!-- KASSE -->
-    <div id="view-pos" class="view-section active">
-        <div class="main-container">
-            <div class="section">
-                <h2 class="section-title">Getränke & Produkte</h2>
-                <div class="multiplier-bar" id="multiplier-bar">
-                    <button class="multiplier-btn active" onclick="setMultiplier(1, this)">x1</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(2, this)">x2</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(3, this)">x3</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(4, this)">x4</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(5, this)">x5</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(6, this)">x6</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(7, this)">x7</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(8, this)">x8</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(9, this)">x9</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(10, this)">x10</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(12, this)">x12</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(15, this)">x15</button>
-                    <button class="multiplier-btn" onclick="setMultiplier(20, this)">x20</button>
-                </div>
-                <div class="pos-container" id="pos-container"></div>
-            </div>
-            <div class="section">
-                <h2 class="section-title">Aktuelle Bestellung</h2>
-                <ul class="cart-list" id="cart-list">
-                    <li style="text-align: center; color: var(--text-secondary); padding: 20px;">Warenkorb ist leer</li>
-                </ul>
-                <div class="total-container">
-                    <span>Gesamt:</span>
-                    <span id="total-price">0,00 €</span>
-                </div>
-                <div class="change-calculator" id="change-box">
-                    <div class="cash-buttons">
-                        <button class="cash-btn" onclick="addCash(5)">+ 5 €</button>
-                        <button class="cash-btn" onclick="addCash(10)">+ 10 €</button>
-                        <button class="cash-btn" onclick="addCash(20)">+ 20 €</button>
-                        <button class="cash-btn" onclick="addCash(50)">+ 50 €</button>
-                        <button class="cash-btn" onclick="setExactCash()">Passend</button>
-                    </div>
-                    <div class="change-row">
-                        <span>Gegeben:</span>
-                        <input type="number" id="cash-given-input" placeholder="0.00" oninput="calculateChange()" class="login-input" style="width:90px; text-align:right; margin:0;">
-                    </div>
-                    <div class="change-row" style="margin-top: 5px;">
-                        <span>Rückgeld:</span>
-                        <span class="change-result" id="change-amount">0,00 €</span>
-                    </div>
-                </div>
-                <div class="checkout-actions">
-                    <div class="checkout-row">
-                        <button class="btn btn-purple" id="btn-discount-modal" onclick="openDiscountModal()" style="flex: 1;" disabled>🏷️ Rabatt auswählen</button>
-                    </div>
-                    <div class="checkout-row">
-                        <button class="btn btn-danger" onclick="clearCart()" style="flex: 1;">Löschen</button>
-                        <button class="btn btn-success" id="pay-btn" onclick="checkout()" style="flex: 2;" disabled>Kassieren</button>
-                    </div>
-                    <div class="checkout-row">
-                        <button class="btn btn-info" id="btn-create-receipt" onclick="openLastOrderReceipt()" style="flex: 1;" disabled>🧾 Beleg erstellen (Letzte Bestellung)</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ADMIN (iOS Home-Screen mit Apps) -->
-    <div id="view-admin" class="view-section">
-        <div class="section" style="flex: 1; overflow-y: auto;">
-            
-            <!-- ADMIN STARTSEITE -->
-            <div id="admin-apps-home" style="display: flex; flex-direction: column; flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #f0f0f2; padding-bottom: 14px; margin-bottom: 10px;">
-                    <div>
-                        <h2 style="margin: 0; font-size: 1.25rem;">🔒 Admin-Zentrale</h2>
-                        <span id="cloud-sync-status-text" style="font-size: 0.8rem; color: var(--text-secondary);">Verbinde mit Cloud...</span>
-                    </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn btn-primary" style="padding: 12px 16px; font-size: 0.9rem;" onclick="forceCloudRefresh()">
-                            🔄 Jetzt abrufen
-                        </button>
-                        <button class="btn btn-success" style="padding: 12px 20px; font-size: 0.95rem; box-shadow: 0 4px 14px rgba(52,199,89,0.3);" onclick="manualCloudSaveAll()">
-                            💾 Alle Daten in Cloud speichern
+    <main>
+        <!-- KASSEN-ANSICHT (POS) -->
+        <section id="view-pos" class="view-section active">
+            <div class="pos-layout">
+                <div>
+                    <div class="pos-toolbar">
+                        <div class="multiplier-group">
+                            <button class="multiplier-btn active" onclick="window.setMultiplier(1, this)">1x</button>
+                            <button class="multiplier-btn" onclick="window.setMultiplier(2, this)">2x</button>
+                            <button class="multiplier-btn" onclick="window.setMultiplier(3, this)">3x</button>
+                            <button class="multiplier-btn" onclick="window.setMultiplier(4, this)">4x</button>
+                            <button class="multiplier-btn" onclick="window.setMultiplier(5, this)">5x</button>
+                            <button class="multiplier-btn" onclick="window.setMultiplier(10, this)">10x</button>
+                        </div>
+                        <button class="btn btn-warning" style="padding: 8px 14px; font-size: 0.86rem;" onclick="window.openManualStockModal()">
+                            ✋ Manuelle Lagerentnahme
                         </button>
                     </div>
+                    <div id="pos-container"></div>
                 </div>
 
-                <div class="ios-app-grid">
-                    <div class="ios-app-tile" onclick="openAdminApp('products')">
-                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #0071e3, #40a9ff);">📦</div>
-                        <span class="ios-app-label">Produkte & Kasse</span>
+                <!-- Warenkorb -->
+                <aside class="cart-panel">
+                    <h3>Aktuelle Bestellung</h3>
+                    <ul id="cart-list">
+                        <li style="text-align: center; color: var(--text-secondary); padding: 20px;">Warenkorb ist leer</li>
+                    </ul>
+
+                    <div class="cart-total-row">
+                        <span>Gesamt:</span>
+                        <span id="total-price">0,00 €</span>
                     </div>
 
-                    <div class="ios-app-tile" onclick="openAdminApp('stock')">
-                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #34c759, #28a745);">📊</div>
-                        <span class="ios-app-label">Lager & Logbuch</span>
-                    </div>
+                    <button id="btn-discount-modal" class="btn" style="width: 100%; background: var(--purple); color: #fff; margin-bottom: 10px;" onclick="window.openDiscountModal()" disabled>
+                        🏷️ Rabatt auswählen
+                    </button>
 
-                    <div class="ios-app-tile" onclick="openAdminApp('journal')">
-                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #ff9500, #ff6b00);">📒</div>
-                        <span class="ios-app-label">Kassenbuch & Excel</span>
-                    </div>
-
-                    <div class="ios-app-tile" onclick="openAdminApp('discounts')">
-                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #af52de, #8944ab);">🏷️</div>
-                        <span class="ios-app-label">Rabatte</span>
-                    </div>
-
-                    <div class="ios-app-tile" onclick="openAdminApp('happyhour')">
-                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #ffcc00, #ff9500);">⚡</div>
-                        <span class="ios-app-label">Happy Hour</span>
-                    </div>
-
-                    <div class="ios-app-tile" onclick="openAdminApp('receipts')">
-                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #5856d6, #3634a3);">🧾</div>
-                        <span class="ios-app-label">Beleg & Firmendaten</span>
-                    </div>
-
-                    <div class="ios-app-tile" onclick="openAdminApp('waiters')">
-                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #30b0c7, #007aff);">👥</div>
-                        <span class="ios-app-label">Accounts</span>
-                    </div>
-
-                    <div class="ios-app-tile" onclick="openAdminApp('logs')">
-                        <div class="ios-app-icon" style="background: linear-gradient(135deg, #8e8e93, #48484a);">📋</div>
-                        <span class="ios-app-label">System Logs</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- APP 1: Produkte & Kategorien -->
-            <div id="admin-app-products" class="admin-app-view">
-                <div class="admin-app-topbar">
-                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
-                    <h2 style="margin: 0; font-size: 1.15rem;">📦 Produkte, Kategorien & Lager-Modus</h2>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea;">
-                    <div>
-                        <h3 style="margin: 0; font-size: 1rem;">Kasse für alle Kellner freigeben / sperren:</h3>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span id="kasse-status-label" style="font-size: 0.85rem; font-weight: bold; color: var(--success);">Aktiv</span>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                        <label for="change-toggle" style="font-size: 0.9rem; font-weight: 600; cursor: pointer;">💶 Rückgeldrechner anzeigen</label>
                         <label class="switch">
-                            <input type="checkbox" id="kasse-active-toggle" onchange="toggleKasseActive(this.checked)" checked>
+                            <input type="checkbox" id="change-toggle" onchange="window.toggleChangeCalculator()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div id="change-box" class="change-box">
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Gegeben (€):</label>
+                        <input type="number" id="cash-given-input" class="login-input" style="margin: 4px 0 8px 0; padding: 8px 10px;" step="0.50" placeholder="0.00" oninput="window.calculateChange()">
+                        <div class="quick-cash-row">
+                            <button class="btn" style="padding: 6px 10px; font-size: 0.82rem;" onclick="window.addCash(5)">+5€</button>
+                            <button class="btn" style="padding: 6px 10px; font-size: 0.82rem;" onclick="window.addCash(10)">+10€</button>
+                            <button class="btn" style="padding: 6px 10px; font-size: 0.82rem;" onclick="window.addCash(20)">+20€</button>
+                            <button class="btn" style="padding: 6px 10px; font-size: 0.82rem;" onclick="window.addCash(50)">+50€</button>
+                            <button class="btn btn-info" style="padding: 6px 10px; font-size: 0.82rem;" onclick="window.setExactCash()">Passend</button>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 6px;">
+                            <span>Rückgeld:</span>
+                            <span id="change-amount" style="color: var(--success);">0,00 €</span>
+                        </div>
+                    </div>
+
+                    <button id="pay-btn" class="btn btn-success" style="width: 100%; padding: 15px; font-size: 1.08rem; margin-top: 8px;" onclick="window.checkout()" disabled>
+                        ✓ Bezahlen & Buchen
+                    </button>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                        <button class="btn" style="font-size: 0.85rem;" onclick="window.clearCart()">Leeren</button>
+                        <button id="btn-create-receipt" class="btn btn-info" style="font-size: 0.85rem;" onclick="window.openLastOrderReceipt()" disabled>🧾 Letzter Beleg</button>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <!-- ADMIN-ANSICHT -->
+        <section id="view-admin" class="view-section">
+            <div class="admin-top-bar">
+                <div class="admin-metric-card">
+                    <span class="label">Gesamtumsatz (Live)</span>
+                    <div class="big-num" id="total-revenue" style="color: var(--success);">0.00 €</div>
+                </div>
+                <div class="admin-metric-card">
+                    <span class="label">Kassenbetrieb</span>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+                        <strong id="kasse-status-label" style="color: var(--success);">Aktiv</strong>
+                        <label class="switch">
+                            <input type="checkbox" id="kasse-active-toggle" checked onchange="window.toggleKasseActive(this.checked)">
                             <span class="slider"></span>
                         </label>
                     </div>
                 </div>
-
-                <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-                    <input type="text" id="new-cat-name" class="login-input" placeholder="Neue Kategorie (z.B. Shots)" style="margin:0; flex:2;">
-                    <button class="btn btn-success" style="padding: 12px 20px;" onclick="addCategory()">Kategorie hinzufügen</button>
+                <div class="admin-metric-card">
+                    <span class="label">Happy Hour Modus</span>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+                        <strong id="hh-status-label" style="color: var(--danger);">Inaktiv</strong>
+                        <label class="switch">
+                            <input type="checkbox" id="happy-hour-main-toggle" onchange="window.toggleGlobalHappyHour(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h3 style="font-size: 1.05rem; margin: 0;">Produkte, Preise & Lager-Modus bearbeiten:</h3>
-                    <button class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="addNewProduct()">+ Produkt hinzufügen</button>
+                <div class="admin-metric-card">
+                    <span class="label">Cloud-Synchronisation</span>
+                    <div id="cloud-sync-status-text" style="font-size: 0.86rem; font-weight: 600; margin-top: 8px; color: var(--text-secondary);">Verbinde...</div>
                 </div>
-                <div class="admin-grid" id="admin-products-grid"></div>
             </div>
 
-            <!-- APP 2: Lagerübersicht & Logbuch -->
-            <div id="admin-app-stock" class="admin-app-view">
-                <div class="admin-app-topbar">
-                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
-                    <h2 style="margin: 0; font-size: 1.15rem;">📊 Lagerbestand & Logbuch</h2>
+            <!-- App-Übersicht -->
+            <div id="admin-apps-home">
+                <div class="admin-app-tile" onclick="window.openAdminApp('products')">
+                    <span class="icon">🍹</span>
+                    <span class="title">Produkte & Preise</span>
                 </div>
+                <div class="admin-app-tile" onclick="window.openAdminApp('stock')">
+                    <span class="icon">📦</span>
+                    <span class="title">Lagerbestand</span>
+                </div>
+                <div class="admin-app-tile" onclick="window.openAdminApp('journal')">
+                    <span class="icon">📒</span>
+                    <span class="title">Kassenbuch</span>
+                </div>
+                <div class="admin-app-tile" onclick="window.openAdminApp('stats')">
+                    <span class="icon">📊</span>
+                    <span class="title">Verkaufsstatistik</span>
+                </div>
+                <div class="admin-app-tile" onclick="window.openAdminApp('happyhour')">
+                    <span class="icon">⚡</span>
+                    <span class="title">Happy Hour</span>
+                </div>
+                <div class="admin-app-tile" onclick="window.openAdminApp('discounts')">
+                    <span class="icon">🏷️</span>
+                    <span class="title">Rabattknöpfe</span>
+                </div>
+                <div class="admin-app-tile" onclick="window.openAdminApp('receipts')">
+                    <span class="icon">🧾</span>
+                    <span class="title">Beleg & Firma</span>
+                </div>
+                <div class="admin-app-tile" onclick="window.openAdminApp('waiters')">
+                    <span class="icon">👥</span>
+                    <span class="title">Personal & Logins</span>
+                </div>
+                <div class="admin-app-tile" onclick="window.openAdminApp('system')">
+                    <span class="icon">⚙️</span>
+                    <span class="title">Cloud & Reset</span>
+                </div>
+            </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <span style="font-size: 0.9rem; color: var(--text-secondary);">Bestände einsehen und als Admin korrigieren</span>
-                    <button class="btn btn-primary" id="stock-unlock-btn" style="padding: 6px 14px; font-size: 0.85rem;" onclick="unlockStockAdminMode()">🔓 Bestands-Bearbeitung entsperren</button>
+            <!-- App: Produkte -->
+            <div id="admin-app-products" class="admin-app-view">
+                <div class="admin-app-header">
+                    <h3>🍹 Produkte & Kategorien verwalten</h3>
+                    <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
                 </div>
-                
-                <div class="table-container">
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                    <input type="text" id="new-cat-name" class="login-input" style="max-width: 240px; margin: 0;" placeholder="Neue Kategorie...">
+                    <button class="btn" onclick="window.addCategory()">+ Kategorie</button>
+                    <button class="btn btn-primary" onclick="window.addNewProduct()">+ Neues Produkt</button>
+                </div>
+                <div id="admin-products-grid"></div>
+            </div>
+
+            <!-- App: Lager -->
+            <div id="admin-app-stock" class="admin-app-view">
+                <div class="admin-app-header">
+                    <h3>📦 Lagerbestand & Protokoll</h3>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button id="stock-unlock-btn" class="btn btn-primary" onclick="window.unlockStockAdminMode()">🔓 Bestands-Bearbeitung entsperren</button>
+                        <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="margin-bottom: 24px;">
                     <table>
                         <thead>
                             <tr>
-                                <th>Artikel</th>
+                                <th>Produkt</th>
                                 <th>Preis</th>
-                                <th>Lager-Modus</th>
-                                <th>Lagerbestand</th>
+                                <th>Modus</th>
+                                <th>Bestand</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="stock-tbody"></tbody>
                     </table>
                 </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 10px;">
-                    <h3 style="margin:0; font-size: 1rem;">Lager- & Storno-Logbuch</h3>
-                    <button class="btn btn-danger" id="clear-stock-log-btn" style="display: none; padding: 4px 10px; font-size: 0.75rem;" onclick="clearStockLog()">Logbuch löschen</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4>Lager-Protokoll</h4>
+                    <button id="clear-stock-log-btn" class="btn btn-danger" style="display: none; padding: 6px 12px; font-size: 0.82rem;" onclick="window.clearStockLog()">Protokoll leeren</button>
                 </div>
-                <div class="table-container" style="max-height: 220px;">
+                <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
-                                <th>Datum & Uhrzeit</th>
-                                <th>Artikel / Aktion</th>
-                                <th>Bestand / Info</th>
+                                <th>Zeitpunkt</th>
+                                <th>Artikel</th>
+                                <th>Änderung</th>
                             </tr>
                         </thead>
-                        <tbody id="stock-log-tbody">
-                            <tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Noch keine Einträge.</td></tr>
-                        </tbody>
+                        <tbody id="stock-log-tbody"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- APP 3: Kassenbuch & Excel-Export -->
+            <!-- App: Kassenbuch -->
             <div id="admin-app-journal" class="admin-app-view">
-                <div class="admin-app-topbar">
-                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
-                    <h2 style="margin: 0; font-size: 1.15rem;">📒 Verkaufsstatistik & Kassenbuch</h2>
+                <div class="admin-app-header">
+                    <h3>📒 Kassenbuch</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-success" onclick="window.exportToExcel()">📥 Excel-Export (.xlsx)</button>
+                        <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
+                    </div>
                 </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <span style="font-size: 0.9rem; color: var(--text-secondary);">Alle Verkäufe, Stornos und Excel-Export</span>
-                    <button class="btn btn-success" style="padding: 8px 16px; font-size: 0.85rem;" onclick="exportToExcel()">📥 Kassenbuch als Excel (.xlsx) herunterladen</button>
-                </div>
-                <div class="stats-grid" id="stats-grid"></div>
-                <h3 style="margin-top: 15px; font-size: 1rem;">Kassenbuch</h3>
-                <div class="table-container" style="max-height: 300px;">
+                <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
                                 <th>Beleg-Nr.</th>
-                                <th>Datum & Uhrzeit</th>
+                                <th>Zeit & Vermerk</th>
                                 <th>Kellner</th>
                                 <th>Bestellung</th>
                                 <th>Betrag</th>
-                                <th>Aktion</th>
+                                <th>Aktionen</th>
                             </tr>
                         </thead>
-                        <tbody id="journal-tbody">
-                            <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Noch keine Verkäufe getätigt.</td></tr>
-                        </tbody>
+                        <tbody id="journal-tbody"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- APP 4: Rabattknöpfe verwalten -->
-            <div id="admin-app-discounts" class="admin-app-view">
-                <div class="admin-app-topbar">
-                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
-                    <h2 style="margin: 0; font-size: 1.15rem;">🏷️ Rabattknöpfe verwalten</h2>
+            <!-- App: Statistik -->
+            <div id="admin-app-stats" class="admin-app-view">
+                <div class="admin-app-header">
+                    <h3>📊 Verkaufte Mengen</h3>
+                    <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
+                </div>
+                <div id="stats-grid"></div>
+            </div>
+
+            <!-- App: Happy Hour -->
+            <div id="admin-app-happyhour" class="admin-app-view">
+                <div class="admin-app-header">
+                    <h3>⚡ Happy Hour Einstellungen</h3>
+                    <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
+                </div>
+                <div class="hh-tabs">
+                    <button class="admin-hh-tab-btn active" onclick="window.switchHHTab('manual')">Manuell starten</button>
+                    <button class="admin-hh-tab-btn" onclick="window.switchHHTab('schedule')">Zeitpläne</button>
                 </div>
 
-                <div style="background: #fafafa; padding: 16px; border-radius: 12px; border: 1px solid #e5e5ea; margin-bottom: 20px;">
-                    <h3 style="margin-top: 0; font-size: 1rem;">Neuen Rabattknopf hinzufügen:</h3>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                        <input type="text" id="new-discount-name" class="login-input" placeholder="Name (z.B. Q13, VIP, Helfer)" style="margin: 0; flex: 2; min-width: 160px;">
-                        <input type="number" id="new-discount-percent" class="login-input" placeholder="Rabatt in % (z.B. 50)" min="1" max="100" style="margin: 0; flex: 1; min-width: 120px;">
-                        <select id="new-discount-color" class="login-input" style="margin: 0; flex: 1; min-width: 130px;">
-                            <option value="#af52de">Lila</option>
-                            <option value="#0071e3">Blau</option>
-                            <option value="#34c759">Grün</option>
-                            <option value="#ff9500">Orange</option>
-                            <option value="#ff3b30">Rot</option>
-                        </select>
-                        <button class="btn btn-success" style="padding: 12px 20px;" onclick="addDiscountPreset()">+ Hinzufügen</button>
+                <div id="hh-sec-manual">
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 14px;">
+                        <label><input type="radio" name="manual_hh_mode" value="global" checked onchange="window.updateManualUI()"> Einheitlicher Rabatt (€):</label>
+                        <input type="number" id="manual-global-discount" class="login-input" style="width: 90px; margin: 0; padding: 6px;" value="1.00" step="0.5" min="0.1">
+                        <label><input type="radio" name="manual_hh_mode" value="individual" onchange="window.updateManualUI()"> Individuell pro Produkt</label>
+                    </div>
+                    <div class="table-wrapper" style="margin-bottom: 14px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Aktiv</th>
+                                    <th>Produkt</th>
+                                    <th>Regulärpreis</th>
+                                    <th>Rabatt (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manual-hh-products"></tbody>
+                        </table>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-success" onclick="window.startManualHH()">⚡ Happy Hour jetzt starten</button>
+                        <button class="btn btn-danger" onclick="window.stopHH()">Beenden & Zurücksetzen</button>
                     </div>
                 </div>
 
-                <h3 style="font-size: 1rem; margin-top: 0;">Aktive Rabattknöpfe bearbeiten:</h3>
-                <div class="table-container" style="max-height: 320px;">
+                <div id="hh-sec-schedule" style="display: none;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                        <input type="text" id="sched-day" class="login-input" style="max-width: 180px; margin: 0;" placeholder="Tag (z. B. Freitag)">
+                        <input type="time" id="sched-start" class="login-input" style="max-width: 130px; margin: 0;">
+                        <input type="time" id="sched-end" class="login-input" style="max-width: 130px; margin: 0;">
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 12px;">
+                        <label><input type="radio" name="sched_hh_mode" value="global" checked onchange="window.updateSchedUI()"> Einheitlicher Rabatt (€):</label>
+                        <input type="number" id="sched-global-discount" class="login-input" style="width: 90px; margin: 0; padding: 6px;" value="1.00" step="0.5" min="0.1">
+                        <label><input type="radio" name="sched_hh_mode" value="individual" onchange="window.updateSchedUI()"> Individuell</label>
+                    </div>
+                    <div class="table-wrapper" style="margin-bottom: 12px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Aktiv</th>
+                                    <th>Produkt</th>
+                                    <th>Regulärpreis</th>
+                                    <th>Rabatt (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sched-hh-products"></tbody>
+                        </table>
+                    </div>
+                    <button class="btn btn-primary" onclick="window.addScheduleHH()">Zeitplan speichern</button>
+                    <h4 style="margin-top: 20px;">Hinterlegte Zeitpläne</h4>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tag</th>
+                                    <th>Zeitraum</th>
+                                    <th>Modus</th>
+                                    <th>Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hh-schedule-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- App: Rabatte -->
+            <div id="admin-app-discounts" class="admin-app-view">
+                <div class="admin-app-header">
+                    <h3>🏷️ Rabattknöpfe verwalten</h3>
+                    <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                    <input type="text" id="new-discount-name" class="login-input" style="max-width: 200px; margin: 0;" placeholder="Name (z. B. Helfer)">
+                    <input type="number" id="new-discount-percent" class="login-input" style="max-width: 110px; margin: 0;" placeholder="%" min="1" max="100">
+                    <select id="new-discount-color" class="login-input" style="max-width: 130px; margin: 0;">
+                        <option value="#af52de">Lila</option>
+                        <option value="#0071e3">Blau</option>
+                        <option value="#34c759">Grün</option>
+                        <option value="#ff9500">Orange</option>
+                        <option value="#ff3b30">Rot</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="window.addDiscountPreset()">+ Rabatt hinzufügen</button>
+                </div>
+                <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
@@ -865,315 +1178,173 @@
                 </div>
             </div>
 
-            <!-- APP 5: Happy Hour Management -->
-            <div id="admin-app-happyhour" class="admin-app-view">
-                <div class="admin-app-topbar">
-                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
-                    <h2 style="margin: 0; font-size: 1.15rem;">⚡ Happy Hour Management</h2>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <h3 style="margin: 0; font-size: 1.1rem;">Happy Hour Hauptschalter:</h3>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span id="hh-status-label" style="font-size: 0.85rem; font-weight: bold; color: var(--danger);">Inaktiv</span>
-                        <label class="switch">
-                            <input type="checkbox" id="happy-hour-main-toggle" onchange="toggleGlobalHappyHour(this.checked)">
-                            <span class="slider happy-hour-slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f2; padding-bottom: 12px;">
-                    <button class="admin-sub-btn admin-hh-tab-btn active" onclick="switchHHTab('manual')">Manuell Steuern</button>
-                    <button class="admin-sub-btn admin-hh-tab-btn" onclick="switchHHTab('schedule')">Zeitpläne verwalten</button>
-                </div>
-
-                <div id="hh-sec-manual" style="display: block;">
-                    <div style="background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; margin-bottom: 25px; box-shadow: var(--shadow);">
-                        <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--accent);">Manuelle Happy Hour Starten</h3>
-                        
-                        <div class="radio-group">
-                            <label><input type="radio" name="manual_hh_mode" value="global" onchange="updateManualUI()" checked> Allgemein (Gleicher Rabatt)</label>
-                            <label><input type="radio" name="manual_hh_mode" value="individual" onchange="updateManualUI()"> Individuell</label>
-                        </div>
-
-                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.9rem; font-weight: 600;">Eingabe für "Allgemein" (€):</span>
-                            <input type="number" id="manual-global-discount" class="login-input" value="1.00" step="0.5" min="0.1" style="width: 100px; margin: 0;">
-                        </div>
-
-                        <div class="table-container" style="max-height: 250px; margin-bottom: 15px;">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style="width: 50px;">Aktiv</th>
-                                        <th>Produkt</th>
-                                        <th>Normalpreis</th>
-                                        <th>Individueller Rabatt (€)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="manual-hh-products"></tbody>
-                            </table>
-                        </div>
-
-                        <div style="display: flex; gap: 10px;">
-                            <button class="btn btn-warning" onclick="startManualHH()">WERTE SPEICHERN & STARTEN</button>
-                            <button class="btn btn-danger" onclick="stopHH()">RESET / BEENDEN</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="hh-sec-schedule" style="display: none;">
-                    <div style="background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; margin-bottom: 20px; box-shadow: var(--shadow);">
-                        <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--success);">Zeitplan hinzufügen</h3>
-                        
-                        <div style="display: flex; gap: 12px; margin-bottom: 15px;">
-                            <input type="text" id="sched-day" class="login-input" placeholder="Tag / Datum (z.B. Freitag)" style="margin: 0; flex: 2;">
-                            <input type="time" id="sched-start" class="login-input" style="margin: 0; flex: 1;">
-                            <input type="time" id="sched-end" class="login-input" style="margin: 0; flex: 1;">
-                        </div>
-
-                        <div class="radio-group">
-                            <label><input type="radio" name="sched_hh_mode" value="global" onchange="updateSchedUI()" checked> Allgemein</label>
-                            <label><input type="radio" name="sched_hh_mode" value="individual" onchange="updateSchedUI()"> Individuell</label>
-                        </div>
-
-                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.9rem; font-weight: 600;">Eingabe für "Allgemein" (€):</span>
-                            <input type="number" id="sched-global-discount" class="login-input" value="1.00" step="0.5" min="0.1" style="width: 100px; margin: 0;">
-                        </div>
-
-                        <div class="table-container" style="max-height: 250px; margin-bottom: 15px;">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style="width: 50px;">Aktiv</th>
-                                        <th>Produkt</th>
-                                        <th>Normalpreis</th>
-                                        <th>Individueller Rabatt (€)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="sched-hh-products"></tbody>
-                            </table>
-                        </div>
-
-                        <button class="btn btn-success" onclick="addScheduleHH()">ZEITPLAN SPEICHERN</button>
-
-                        <h4 style="margin-top: 25px; margin-bottom: 10px;">Hinterlegte Zeitpläne:</h4>
-                        <div class="table-container" style="max-height: 180px;">
-                            <table>
-                                <thead><tr><th>Zeitraum / Tag</th><th>Von - Bis</th><th>Typ</th><th>Aktion</th></tr></thead>
-                                <tbody id="hh-schedule-list">
-                                    <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Zeitpläne hinterlegt.</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- APP 6: Beleg & Firmendaten (Kleinbetragsrechnung) -->
+            <!-- App: Beleg & Firma -->
             <div id="admin-app-receipts" class="admin-app-view">
-                <div class="admin-app-topbar">
-                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
-                    <h2 style="margin: 0; font-size: 1.15rem;">🧾 Beleg & Firmendaten (Kleinbetragsrechnung)</h2>
+                <div class="admin-app-header">
+                    <h3>🧾 Firmendaten & Kassenbeleg</h3>
+                    <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
                 </div>
-
-                <div style="background: #fafafa; padding: 20px; border-radius: 14px; border: 1px solid #e5e5ea; max-width: 650px;">
-                    <p style="margin-top: 0; font-size: 0.85rem; color: var(--text-secondary);">
-                        Diese Stammdaten erscheinen automatisch auf jedem erstellten Kassenbon (Pflichtangaben für Kleinbetragsrechnungen bis 250 € brutto).
-                    </p>
-
-                    <label style="font-size: 0.85rem; font-weight: 600;">Vollständiger Name des Unternehmens / der GbR:</label>
-                    <input type="text" id="comp-name" class="login-input" placeholder="z.B. Abi 2027 Event GbR">
-
-                    <label style="font-size: 0.85rem; font-weight: 600;">Straße & Hausnummer:</label>
-                    <input type="text" id="comp-street" class="login-input" placeholder="z.B. Musterstraße 12">
-
-                    <label style="font-size: 0.85rem; font-weight: 600;">PLZ & Ort:</label>
-                    <input type="text" id="comp-city" class="login-input" placeholder="z.B. 95632 Wunsiedel">
-
-                    <label style="font-size: 0.85rem; font-weight: 600;">Steuernummer:</label>
-                    <input type="text" id="comp-tax" class="login-input" placeholder="z.B. 258/123/45678">
-
-                    <label style="font-size: 0.85rem; font-weight: 600;">Hinweis zur Umsatzsteuer (Kleinunternehmerregelung):</label>
-                    <input type="text" id="comp-tax-note" class="login-input" placeholder="Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.">
-
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                        <div style="flex: 2; min-width: 160px;">
-                            <label style="font-size: 0.85rem; font-weight: 600;">Rechnungsnummer-Präfix:</label>
-                            <input type="text" id="comp-receipt-prefix" class="login-input" placeholder="RE-2026-">
-                        </div>
-                        <div style="flex: 1; min-width: 130px;">
-                            <label style="font-size: 0.85rem; font-weight: 600;">Nächste Laufnummer:</label>
-                            <input type="number" id="comp-receipt-counter" class="login-input" min="1" placeholder="1">
-                        </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; max-width: 800px;">
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Veranstalter / GbR</label>
+                        <input type="text" id="comp-name" class="login-input">
                     </div>
-
-                    <label style="font-size: 0.85rem; font-weight: 600;">Fußzeile auf dem Beleg:</label>
-                    <input type="text" id="comp-footer" class="login-input" placeholder="Vielen Dank für Ihren Besuch!">
-
-                    <button class="btn btn-success" style="width: 100%; margin-top: 12px; padding: 12px;" onclick="saveCompanySettings()">
-                        💾 Beleg- & Firmendaten speichern
-                    </button>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Straße & Hausnummer</label>
+                        <input type="text" id="comp-street" class="login-input">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">PLZ & Ort</label>
+                        <input type="text" id="comp-city" class="login-input">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Steuernummer</label>
+                        <input type="text" id="comp-tax" class="login-input">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Steuerhinweis (§ 19 UStG)</label>
+                        <input type="text" id="comp-tax-note" class="login-input">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Beleg-Präfix</label>
+                        <input type="text" id="comp-receipt-prefix" class="login-input">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Nächste Belegnummer</label>
+                        <input type="number" id="comp-receipt-counter" class="login-input" min="1">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Fußzeile auf Beleg</label>
+                        <input type="text" id="comp-footer" class="login-input">
+                    </div>
                 </div>
+                <button class="btn btn-primary" style="margin-top: 10px;" onclick="window.saveCompanySettings()">Firmendaten speichern</button>
             </div>
 
-            <!-- APP 7: Accounts -->
+            <!-- App: Personal & Logins -->
             <div id="admin-app-waiters" class="admin-app-view">
-                <div class="admin-app-topbar">
-                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
-                    <h2 style="margin: 0; font-size: 1.15rem;">👥 Voreingestellte Accounts</h2>
+                <div class="admin-app-header">
+                    <h3>👥 Personal & Anmeldeprotokoll</h3>
+                    <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
                 </div>
-                <div class="table-container" style="max-height: 400px;">
+                <div class="table-wrapper" style="margin-bottom: 24px;">
                     <table>
                         <thead>
-                            <tr><th>Name / ID</th><th>Rolle</th></tr>
+                            <tr>
+                                <th>Name & ID</th>
+                                <th>Rolle</th>
+                            </tr>
                         </thead>
                         <tbody id="waiters-tbody"></tbody>
                     </table>
                 </div>
-            </div>
-
-            <!-- APP 8: Logs & System -->
-            <div id="admin-app-logs" class="admin-app-view">
-                <div class="admin-app-topbar">
-                    <button class="ios-back-btn" onclick="closeAdminApp()">‹ Zurück</button>
-                    <h2 style="margin: 0; font-size: 1.15rem;">📋 System Logs & Reset</h2>
-                </div>
-                <h3 style="font-size: 1rem; margin-top: 0;">An- und Abmelde-Logbuch:</h3>
-                <div class="table-container" style="max-height: 300px; margin-bottom: 25px;">
+                <h4>An- und Abmeldungen</h4>
+                <div class="table-wrapper">
                     <table>
                         <thead>
-                            <tr><th>Datum & Uhrzeit</th><th>Name</th><th>ID</th><th>Aktion</th></tr>
+                            <tr>
+                                <th>Zeitpunkt</th>
+                                <th>Name</th>
+                                <th>ID</th>
+                                <th>Status</th>
+                            </tr>
                         </thead>
-                        <tbody id="login-log-tbody">
-                            <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Keine Einträge.</td></tr>
-                        </tbody>
+                        <tbody id="login-log-tbody"></tbody>
                     </table>
-                </div>
-                
-                <div style="display: flex; justify-content: flex-end;">
-                    <button class="btn btn-danger" style="padding: 12px 24px;" onclick="resetData()">System komplett zurücksetzen</button>
                 </div>
             </div>
 
+            <!-- App: System & Cloud -->
+            <div id="admin-app-system" class="admin-app-view">
+                <div class="admin-app-header">
+                    <h3>⚙️ Cloud-Sync & System</h3>
+                    <button class="btn" onclick="window.closeAdminApp()">← Zurück</button>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    <button class="btn btn-primary" onclick="window.manualCloudSaveAll()">☁️ Jetzt komplett in Cloud speichern</button>
+                    <button class="btn btn-info" onclick="window.forceCloudRefresh()">🔄 Cloud-Stand jetzt abrufen</button>
+                    <button class="btn btn-danger" onclick="window.resetData()">⚠️ Umsatz & Kassenbuch zurücksetzen</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Rabatt wählen -->
+    <div id="discount-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">🏷️ Rabatt auswählen</h3>
+                <button class="btn" style="padding: 6px 12px;" onclick="window.closeModal('discount-modal')">✕</button>
+            </div>
+            <div id="discount-modal-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
     </div>
 
+    <!-- Modal: Manuelle Lagerentnahme -->
+    <div id="manual-stock-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 620px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="margin: 0;">✋ Manuelle Lagerentnahme</h3>
+                <button class="btn" style="padding: 6px 12px;" onclick="window.closeModal('manual-stock-modal')">✕</button>
+            </div>
+            <div style="background: #f5f5f7; padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span id="undo-info-text" style="font-size: 0.82rem; color: var(--text-secondary);">Keine Entnahme vorhanden.</span>
+                <button id="undo-manual-stock-btn" class="btn btn-warning" style="padding: 6px 12px; font-size: 0.82rem;" onclick="window.undoLastManualStock()" disabled>↩ Rückgängig</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produkt</th>
+                            <th>Bestand</th>
+                            <th style="text-align: right;">Abziehen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="manual-stock-modal-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Kassenbeleg & QR-Code -->
+    <div id="receipt-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 440px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="margin: 0;">🧾 Digitaler Kassenbeleg</h3>
+                <button class="btn" style="padding: 6px 12px;" onclick="window.closeModal('receipt-modal')">✕</button>
+            </div>
+            <div id="receipt-preview-box" class="receipt-box"></div>
+            <div style="display: flex; flex-direction: column; align-items: center; margin-top: 16px;">
+                <div id="receipt-qrcode" style="padding: 10px; background: #fff; border-radius: 12px; border: 1px solid #e5e5ea;"></div>
+                <span style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 6px;">QR-Code scannen für digitalen Beleg</span>
+            </div>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 14px;" onclick="window.downloadReceiptImage(false)">📥 Als Bild speichern</button>
+        </div>
+    </div>
+
+    <!-- Footer -->
     <footer>
-        <span id="footer-sync-badge">Cloud-Sync: Verbindet...</span>
-        <span>Umsatz heute: <strong id="total-revenue">0,00 €</strong></span>
+        <span id="footer-sync-badge" style="font-weight: 600;">Cloud-Sync: Verbinde...</span>
+        <span>Abi 2027 GbR · Kassensystem</span>
     </footer>
 
-           <!-- Cloud-Sync via direkter HTTPS Firestore REST-API -->
-    <script>
-        const FIREBASE_PROJECT_ID = "abi27wun";
-        const FIREBASE_API_KEY = "AIzaSyDSZ2r9G9328WMfL_KFZr0JqvrEVGmpdxo";
-        const FIRESTORE_DOC_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/kasse/data`;
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        function toFirestoreValue(val) {
-            if (val === null || val === undefined) return { nullValue: null };
-            if (typeof val === "boolean") return { booleanValue: val };
-            if (typeof val === "number") {
-                if (!Number.isFinite(val)) return { doubleValue: 0 };
-                return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
-            }
-            if (typeof val === "string") return { stringValue: val };
-            if (Array.isArray(val)) {
-                return { arrayValue: { values: val.map(v => toFirestoreValue(v)) } };
-            }
-            if (typeof val === "object") {
-                const fields = {};
-                for (const [k, v] of Object.entries(val)) {
-                    if (v !== undefined) fields[k] = toFirestoreValue(v);
-                }
-                return { mapValue: { fields } };
-            }
-            return { stringValue: String(val) };
-        }
+        const firebaseConfig = {
+            apiKey: "AIzaSyDSZ2r9G9328WMfL_KFZr0JqvrEVGmpdxo",
+            authDomain: "abi27wun.firebaseapp.com",
+            projectId: "abi27wun",
+            storageBucket: "abi27wun.firebasestorage.app",
+            messagingSenderId: "1060588154453",
+            appId: "1:1060588154453:web:80025063f74e274c9feedc"
+        };
 
-        function fromFirestoreValue(field) {
-            if (!field || typeof field !== "object") return null;
-            if ("nullValue" in field) return null;
-            if ("booleanValue" in field) return Boolean(field.booleanValue);
-            if ("integerValue" in field) return Number(field.integerValue);
-            if ("doubleValue" in field) return Number(field.doubleValue);
-            if ("stringValue" in field) return String(field.stringValue);
-            if ("timestampValue" in field) return String(field.timestampValue);
-            if ("arrayValue" in field) {
-                const vals = field.arrayValue && Array.isArray(field.arrayValue.values) ? field.arrayValue.values : [];
-                return vals.map(v => fromFirestoreValue(v));
-            }
-            if ("mapValue" in field) {
-                const fields = (field.mapValue && field.mapValue.fields) ? field.mapValue.fields : {};
-                const obj = {};
-                for (const [k, v] of Object.entries(fields)) {
-                    obj[k] = fromFirestoreValue(v);
-                }
-                return obj;
-            }
-            return null;
-        }
-
-        async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
-            try {
-                return await fetch(url, { ...options, signal: controller.signal, cache: "no-store" });
-            } finally {
-                clearTimeout(timer);
-            }
-        }
-
-        async function readCloudDoc() {
-            const res = await fetchWithTimeout(`${FIRESTORE_DOC_URL}?key=${FIREBASE_API_KEY}`, { method: "GET" });
-            if (res.status === 404) {
-                const errJson = await res.json().catch(() => ({}));
-                const msg = errJson?.error?.message || "";
-                if (msg.includes("does not exist")) {
-                    throw new Error("Datenbank in Firebase Console noch nicht erstellt!");
-                }
-                return null; // Dokument kasse/data existiert noch nicht
-            }
-            if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson?.error?.message || `HTTP ${res.status}`);
-            }
-            const json = await res.json();
-            const fields = json.fields || {};
-            const parsed = {};
-            for (const [k, v] of Object.entries(fields)) {
-                parsed[k] = fromFirestoreValue(v);
-            }
-            return parsed;
-        }
-
-        async function writeCloudFields(partialObj) {
-            const keys = Object.keys(partialObj);
-            if (keys.length === 0) return;
-
-            const fields = {};
-            const maskParams = [];
-            for (const k of keys) {
-                fields[k] = toFirestoreValue(partialObj[k]);
-                maskParams.push(`updateMask.fieldPaths=${encodeURIComponent(k)}`);
-            }
-
-            const url = `${FIRESTORE_DOC_URL}?key=${FIREBASE_API_KEY}&${maskParams.join("&")}`;
-            const res = await fetchWithTimeout(url, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fields })
-            });
-
-            if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson?.error?.message || `HTTP ${res.status}`);
-            }
-        }
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const kasseDocRef = doc(db, "kasse", "data");
 
         const defaultCategories = ["Getränke", "Alkoholfrei", "Essen & Snacks"];
         const defaultProducts = [
@@ -1372,23 +1543,17 @@
         window.forceCloudRefresh = async function() {
             if (isWritingToCloud) return;
             try {
-                const cloudData = await readCloudDoc();
-                if (cloudData) {
-                    applyCloudSnapshotData(cloudData);
+                const snap = await getDoc(kasseDocRef);
+                if (snap.exists()) {
+                    applyCloudSnapshotData(snap.data());
                     hasLoadedFromCloud = true;
-                } else {
-                    hasLoadedFromCloud = true;
-                    await window.manualCloudSaveAll(true);
                 }
             } catch (err) {
-                const reason = err.name === 'AbortError'
-                    ? 'Zeitüberschreitung (WLAN / Private Relay prüfen)'
-                    : err.message;
-                setSyncStatus("Cloud-Verbindungsfehler: " + reason, true);
+                console.warn("Firebase Abruf-Hinweis:", err.message);
             }
         }
 
-        async function initApp() {
+        function initApp() {
             if (checkPublicReceiptMode()) return;
 
             products.forEach(p => {
@@ -1399,13 +1564,26 @@
             updateClock();
             setInterval(updateClock, 1000);
 
-            await window.forceCloudRefresh();
+            onSnapshot(kasseDocRef, (docSnap) => {
+                if (docSnap.exists() && !isWritingToCloud) {
+                    applyCloudSnapshotData(docSnap.data());
+                    hasLoadedFromCloud = true;
+                } else if (!docSnap.exists()) {
+                    hasLoadedFromCloud = true;
+                    setSyncStatus("Cloud-Sync: Verbunden (bereit zum Speichern)", false);
+                }
+            }, (error) => {
+                console.error("Firebase Sync Fehler:", error);
+                setSyncStatus("Cloud-Verbindungsfehler: " + error.message, true);
+            });
+
+            window.forceCloudRefresh();
 
             setInterval(() => {
-                if (!document.hidden && !isWritingToCloud) {
+                if (!document.hidden && !isWritingToCloud && hasLoadedFromCloud) {
                     window.forceCloudRefresh();
                 }
-            }, 3000);
+            }, 5000);
         }
 
         window.savePartialToCloud = async function(partialData) {
@@ -1413,19 +1591,20 @@
             const nowTime = new Date().toLocaleTimeString('de-DE');
             const actorName = currentWaiter ? currentWaiter.name : 'System';
 
-            const payload = {
+            const cleanPartial = JSON.parse(JSON.stringify({
                 ...partialData,
                 lastUpdatedAt: nowTime,
                 lastUpdatedBy: actorName
-            };
+            }));
 
             try {
-                await writeCloudFields(payload);
+                await setDoc(kasseDocRef, cleanPartial, { merge: true });
                 hasLoadedFromCloud = true;
                 lastUpdatedAt = nowTime;
                 lastUpdatedBy = actorName;
                 setSyncStatus(`Letzter Cloud-Stand: ${nowTime} Uhr (${actorName})`, false);
             } catch (err) {
+                console.error("Firebase Speicherfehler:", err);
                 setSyncStatus("Speicherfehler: " + err.message, true);
                 alert("Fehler beim Speichern in der Cloud: " + err.message);
             } finally {
@@ -1458,9 +1637,9 @@
                 lastUpdatedAt: nowTime,
                 lastUpdatedBy: actorName
             };
-
+            const cleanPayload = JSON.parse(JSON.stringify(fullGlobalPayload));
             try {
-                await writeCloudFields(fullGlobalPayload);
+                await setDoc(kasseDocRef, cleanPayload, { merge: true });
                 hasLoadedFromCloud = true;
                 lastUpdatedAt = nowTime;
                 lastUpdatedBy = actorName;
@@ -1469,6 +1648,7 @@
                     alert("Alle Kassendaten (außer lokale Warenkörbe) wurden erfolgreich in der Cloud gespeichert!");
                 }
             } catch (err) {
+                console.error("Firebase Speicherfehler:", err);
                 setSyncStatus("Speicherfehler: " + err.message, true);
                 if (!silent) {
                     alert("Fehler beim Speichern in der Cloud: " + err.message);
@@ -1605,7 +1785,7 @@
                         <td style="text-align: right;">
                             <div style="display: inline-flex; align-items: center; gap: 6px;">
                                 <input type="number" id="manual-deduct-qty-${p.id}" value="1" min="1" max="${stock}" class="login-input" style="width: 60px; padding: 6px; margin: 0; text-align: center;" ${stock <= 0 ? 'disabled' : ''}>
-                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deductManualStock(${p.id})" ${stock <= 0 ? 'disabled' : ''}>- Abziehen</button>
+                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="window.deductManualStock(${p.id})" ${stock <= 0 ? 'disabled' : ''}>- Abziehen</button>
                             </div>
                         </td>
                     </tr>
@@ -1623,48 +1803,51 @@
 
             isWritingToCloud = true;
             try {
-                const liveData = (await readCloudDoc()) || {};
-                const liveProducts = Array.isArray(liveData.products) && liveData.products.length > 0 ? liveData.products : products;
-                const liveStock = liveData.stockData || { ...stockData };
-                const liveStockLog = Array.isArray(liveData.stockLog) ? liveData.stockLog : [...stockLog];
-                const liveHistory = Array.isArray(liveData.manualStockHistory) ? liveData.manualStockHistory : [...manualStockHistory];
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveProducts = data.products || products;
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveStockLog = data.stockLog || [...stockLog];
+                    const liveHistory = data.manualStockHistory || [...manualStockHistory];
 
-                const product = liveProducts.find(p => p.id === productId);
-                if (!product || product.stockMode !== 'manual') {
-                    throw new Error("Dieses Produkt ist nicht für manuelle Änderungen freigegeben.");
-                }
+                    const product = liveProducts.find(p => p.id === productId);
+                    if (!product || product.stockMode !== 'manual') {
+                        throw new Error("Dieses Produkt ist nicht für manuelle Änderungen freigegeben.");
+                    }
 
-                const currentStock = liveStock[productId] !== undefined ? liveStock[productId] : 50;
-                if (amount > currentStock) {
-                    throw new Error(`Nicht genügend Bestand! Es sind nur noch ${currentStock} Stück vorhanden.`);
-                }
+                    const currentStock = liveStock[productId] !== undefined ? liveStock[productId] : 50;
+                    if (amount > currentStock) {
+                        throw new Error(`Nicht genügend Bestand! Es sind nur noch ${currentStock} Stück vorhanden.`);
+                    }
 
-                liveStock[productId] = currentStock - amount;
-                const now = new Date();
-                const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
-                const timeStr = now.toLocaleTimeString('de-DE');
+                    liveStock[productId] = currentStock - amount;
+                    const now = new Date();
+                    const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
+                    const timeStr = now.toLocaleTimeString('de-DE');
 
-                liveHistory.unshift({
-                    id: Date.now(),
-                    productId: product.id,
-                    productName: product.name,
-                    amount: amount,
-                    waiter: waiterLabel,
-                    time: timeStr
-                });
+                    liveHistory.unshift({
+                        id: Date.now(),
+                        productId: product.id,
+                        productName: product.name,
+                        amount: amount,
+                        waiter: waiterLabel,
+                        time: timeStr
+                    });
 
-                liveStockLog.unshift({
-                    dateTime: now.toLocaleDateString('de-DE') + ' um ' + timeStr,
-                    itemName: product.name,
-                    stock: `-${amount} Stück (Manuell durch ${waiterLabel}, neu: ${liveStock[productId]})`
-                });
+                    liveStockLog.unshift({
+                        dateTime: now.toLocaleDateString('de-DE') + ' um ' + timeStr,
+                        itemName: product.name,
+                        stock: `-${amount} Stück (Manuell durch ${waiterLabel}, neu: ${liveStock[productId]})`
+                    });
 
-                await writeCloudFields({
-                    stockData: liveStock,
-                    stockLog: liveStockLog,
-                    manualStockHistory: liveHistory,
-                    lastUpdatedAt: timeStr,
-                    lastUpdatedBy: waiterLabel
+                    transaction.set(kasseDocRef, {
+                        stockData: liveStock,
+                        stockLog: liveStockLog,
+                        manualStockHistory: liveHistory,
+                        lastUpdatedAt: timeStr,
+                        lastUpdatedBy: waiterLabel
+                    }, { merge: true });
                 });
             } catch (err) {
                 alert(err.message || "Fehler beim Lagerabzug.");
@@ -1677,42 +1860,45 @@
         window.undoLastManualStock = async function() {
             isWritingToCloud = true;
             try {
-                const liveData = (await readCloudDoc()) || {};
-                const liveProducts = Array.isArray(liveData.products) && liveData.products.length > 0 ? liveData.products : products;
-                const liveStock = liveData.stockData || { ...stockData };
-                const liveStockLog = Array.isArray(liveData.stockLog) ? liveData.stockLog : [...stockLog];
-                const liveHistory = Array.isArray(liveData.manualStockHistory) ? liveData.manualStockHistory : [...manualStockHistory];
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveProducts = data.products || products;
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveStockLog = data.stockLog || [...stockLog];
+                    const liveHistory = data.manualStockHistory || [...manualStockHistory];
 
-                const idx = liveHistory.findIndex(entry => {
-                    const prod = liveProducts.find(p => p.id === entry.productId);
-                    return prod && prod.stockMode === 'manual';
-                });
+                    const idx = liveHistory.findIndex(entry => {
+                        const prod = liveProducts.find(p => p.id === entry.productId);
+                        return prod && prod.stockMode === 'manual';
+                    });
 
-                if (idx === -1) {
-                    throw new Error("Keine rückgängig machbare Entnahme gefunden.");
-                }
+                    if (idx === -1) {
+                        throw new Error("Keine rückgängig machbare Entnahme gefunden.");
+                    }
 
-                const entry = liveHistory[idx];
-                const product = liveProducts.find(p => p.id === entry.productId);
-                const currentStock = liveStock[entry.productId] !== undefined ? liveStock[entry.productId] : 0;
-                liveStock[entry.productId] = currentStock + entry.amount;
-                liveHistory.splice(idx, 1);
+                    const entry = liveHistory[idx];
+                    const product = liveProducts.find(p => p.id === entry.productId);
+                    const currentStock = liveStock[entry.productId] !== undefined ? liveStock[entry.productId] : 0;
+                    liveStock[entry.productId] = currentStock + entry.amount;
+                    liveHistory.splice(idx, 1);
 
-                const now = new Date();
-                const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
-                const timeStr = now.toLocaleTimeString('de-DE');
-                liveStockLog.unshift({
-                    dateTime: now.toLocaleDateString('de-DE') + ' um ' + timeStr,
-                    itemName: product ? product.name : entry.productName,
-                    stock: `+${entry.amount} Stück (Rückgängig durch ${waiterLabel}, neu: ${liveStock[entry.productId]})`
-                });
+                    const now = new Date();
+                    const waiterLabel = currentWaiter ? currentWaiter.name : 'Kellner';
+                    const timeStr = now.toLocaleTimeString('de-DE');
+                    liveStockLog.unshift({
+                        dateTime: now.toLocaleDateString('de-DE') + ' um ' + timeStr,
+                        itemName: product ? product.name : entry.productName,
+                        stock: `+${entry.amount} Stück (Rückgängig durch ${waiterLabel}, neu: ${liveStock[entry.productId]})`
+                    });
 
-                await writeCloudFields({
-                    stockData: liveStock,
-                    stockLog: liveStockLog,
-                    manualStockHistory: liveHistory,
-                    lastUpdatedAt: timeStr,
-                    lastUpdatedBy: waiterLabel
+                    transaction.set(kasseDocRef, {
+                        stockData: liveStock,
+                        stockLog: liveStockLog,
+                        manualStockHistory: liveHistory,
+                        lastUpdatedAt: timeStr,
+                        lastUpdatedBy: waiterLabel
+                    }, { merge: true });
                 });
             } catch (err) {
                 alert(err.message || "Fehler beim Rückgängigmachen.");
@@ -1735,7 +1921,7 @@
                 stockAdminUnlocked = true;
                 document.getElementById('stock-unlock-btn').innerText = "🔒 Bestands-Bearbeitung sperren";
                 document.getElementById('stock-unlock-btn').className = "btn btn-danger";
-                document.getElementById('stock-unlock-btn').setAttribute("onclick", "lockStockAdminMode()");
+                document.getElementById('stock-unlock-btn').setAttribute("onclick", "window.lockStockAdminMode()");
                 document.getElementById('clear-stock-log-btn').style.display = 'inline-block';
                 renderStockTable();
                 renderStockLog();
@@ -1749,7 +1935,7 @@
             stockAdminUnlocked = false;
             document.getElementById('stock-unlock-btn').innerText = "🔓 Bestands-Bearbeitung entsperren";
             document.getElementById('stock-unlock-btn').className = "btn btn-primary";
-            document.getElementById('stock-unlock-btn').setAttribute("onclick", "unlockStockAdminMode()");
+            document.getElementById('stock-unlock-btn').setAttribute("onclick", "window.unlockStockAdminMode()");
             document.getElementById('clear-stock-log-btn').style.display = 'none';
             renderStockTable();
             renderStockLog();
@@ -1837,10 +2023,10 @@
             discountPresets.forEach(d => {
                 tbody.innerHTML += `
                     <tr>
-                        <td><input type="text" class="login-input" style="margin:0; padding:6px 10px;" value="${d.name}" onchange="updateDiscountPreset(${d.id}, 'name', this.value)"></td>
-                        <td><input type="number" class="login-input" style="margin:0; padding:6px 10px; width: 85px;" min="1" max="100" value="${d.percent}" onchange="updateDiscountPreset(${d.id}, 'percent', this.value)"> %</td>
+                        <td><input type="text" class="login-input" style="margin:0; padding:6px 10px;" value="${d.name}" onchange="window.updateDiscountPreset(${d.id}, 'name', this.value)"></td>
+                        <td><input type="number" class="login-input" style="margin:0; padding:6px 10px; width: 85px;" min="1" max="100" value="${d.percent}" onchange="window.updateDiscountPreset(${d.id}, 'percent', this.value)"> %</td>
                         <td>
-                            <select class="login-input" style="margin:0; padding:6px 10px;" onchange="updateDiscountPreset(${d.id}, 'color', this.value)">
+                            <select class="login-input" style="margin:0; padding:6px 10px;" onchange="window.updateDiscountPreset(${d.id}, 'color', this.value)">
                                 <option value="#af52de" ${d.color === '#af52de' ? 'selected' : ''}>Lila</option>
                                 <option value="#0071e3" ${d.color === '#0071e3' ? 'selected' : ''}>Blau</option>
                                 <option value="#34c759" ${d.color === '#34c759' ? 'selected' : ''}>Grün</option>
@@ -1848,7 +2034,7 @@
                                 <option value="#ff3b30" ${d.color === '#ff3b30' ? 'selected' : ''}>Rot</option>
                             </select>
                         </td>
-                        <td><button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="deleteDiscountPreset(${d.id})">Löschen</button></td>
+                        <td><button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="window.deleteDiscountPreset(${d.id})">Löschen</button></td>
                     </tr>
                 `;
             });
@@ -1860,7 +2046,7 @@
 
             if (selectedDiscount) {
                 list.innerHTML += `
-                    <button class="btn btn-danger" style="width: 100%; padding: 12px;" onclick="applyDiscountChoice(null)">
+                    <button class="btn btn-danger" style="width: 100%; padding: 12px;" onclick="window.applyDiscountChoice(null)">
                         ✕ Aktiven Rabatt (${selectedDiscount.name}) entfernen
                     </button>
                 `;
@@ -1872,7 +2058,7 @@
                 discountPresets.forEach(d => {
                     const isCurrent = selectedDiscount && selectedDiscount.id === d.id;
                     list.innerHTML += `
-                        <button class="btn" style="width: 100%; padding: 14px; font-size: 1rem; background: ${d.color || '#af52de'}; ${isCurrent ? 'box-shadow: 0 0 0 3px #1d1d1f;' : ''}" onclick="applyDiscountChoice(${d.id})">
+                        <button class="btn" style="width: 100%; padding: 14px; font-size: 1rem; color: #fff; background: ${d.color || '#af52de'}; ${isCurrent ? 'box-shadow: 0 0 0 3px #1d1d1f;' : ''}" onclick="window.applyDiscountChoice(${d.id})">
                             ${d.name} (${d.percent}% Rabatt) ${isCurrent ? '✓' : ''}
                         </button>
                     `;
@@ -2563,19 +2749,21 @@
 
             isWritingToCloud = true;
             try {
-                const liveData = (await readCloudDoc()) || {};
-                const liveLogs = Array.isArray(liveData.loginLog) ? liveData.loginLog : [...loginLog];
-                liveLogs.unshift(logEntry);
-                await writeCloudFields({
-                    loginLog: liveLogs,
-                    lastUpdatedAt: timeStr,
-                    lastUpdatedBy: currentWaiter.name
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveLogs = Array.isArray(data.loginLog) ? data.loginLog : [];
+                    liveLogs.unshift(logEntry);
+                    transaction.set(kasseDocRef, {
+                        loginLog: liveLogs,
+                        lastUpdatedAt: timeStr,
+                        lastUpdatedBy: currentWaiter.name
+                    }, { merge: true });
                 });
             } catch (e) {
                 console.warn("Login-Log Hinweis:", e.message);
             } finally {
                 isWritingToCloud = false;
-                await window.forceCloudRefresh();
             }
         }
 
@@ -2594,18 +2782,20 @@
 
             isWritingToCloud = true;
             try {
-                const liveData = (await readCloudDoc()) || {};
-                const liveLogs = Array.isArray(liveData.loginLog) ? liveData.loginLog : [...loginLog];
-                liveLogs.unshift(logEntry);
-                await writeCloudFields({
-                    loginLog: liveLogs,
-                    lastUpdatedAt: timeStr,
-                    lastUpdatedBy: actorName
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveLogs = Array.isArray(data.loginLog) ? data.loginLog : [];
+                    liveLogs.unshift(logEntry);
+                    transaction.set(kasseDocRef, {
+                        loginLog: liveLogs,
+                        lastUpdatedAt: timeStr,
+                        lastUpdatedBy: actorName
+                    }, { merge: true });
                 });
             } catch (e) {
             } finally {
                 isWritingToCloud = false;
-                await window.forceCloudRefresh();
             }
         }
 
@@ -2669,51 +2859,55 @@
 
             isWritingToCloud = true;
             try {
-                const data = (await readCloudDoc()) || {};
+                let assignedReceiptNumber = '';
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
 
-                const liveRevenue = (data.totalRevenue || 0) + total;
-                const liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [...salesJournal];
-                const liveCounts = data.itemCounts || { ...itemCounts };
-                const liveStock = data.stockData || { ...stockData };
-                const liveProducts = Array.isArray(data.products) && data.products.length > 0 ? data.products : products;
-                const liveCompany = { ...companySettings, ...(data.companySettings || {}) };
+                    const liveRevenue = (data.totalRevenue || 0) + total;
+                    const liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [];
+                    const liveCounts = data.itemCounts || {};
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveProducts = Array.isArray(data.products) ? data.products : products;
+                    const liveCompany = { ...companySettings, ...(data.companySettings || {}) };
 
-                currentCartBackup.forEach(item => {
-                    const prod = liveProducts.find(p => p.id === item.id);
-                    if (!prod || prod.stockMode !== 'manual') {
-                        liveStock[item.id] = Math.max(0, (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) - item.qty);
-                    }
-                    liveCounts[item.name] = (liveCounts[item.name] || 0) + item.qty;
-                });
+                    currentCartBackup.forEach(item => {
+                        const prod = liveProducts.find(p => p.id === item.id);
+                        if (!prod || prod.stockMode !== 'manual') {
+                            liveStock[item.id] = Math.max(0, (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) - item.qty);
+                        }
+                        liveCounts[item.name] = (liveCounts[item.name] || 0) + item.qty;
+                    });
 
-                const currentNum = liveCompany.receiptCounter || 1;
-                const paddedNum = String(currentNum).padStart(4, '0');
-                const assignedReceiptNumber = `${liveCompany.receiptPrefix || 'RE-2026-'}${paddedNum}`;
-                liveCompany.receiptCounter = currentNum + 1;
+                    const currentNum = liveCompany.receiptCounter || 1;
+                    const paddedNum = String(currentNum).padStart(4, '0');
+                    assignedReceiptNumber = `${liveCompany.receiptPrefix || 'RE-2026-'}${paddedNum}`;
+                    liveCompany.receiptCounter = currentNum + 1;
 
-                const newOrder = {
-                    id: Date.now(),
-                    receiptNumber: assignedReceiptNumber,
-                    time: timeStr,
-                    waiter: waiterStr,
-                    items: currentCartBackup,
-                    subtotal: subtotal,
-                    total: total,
-                    badge: badgeType,
-                    happyHourActive: !!(data.isHappyHour !== undefined ? data.isHappyHour : isHappyHour),
-                    storniert: false
-                };
+                    const newOrder = {
+                        id: Date.now(),
+                        receiptNumber: assignedReceiptNumber,
+                        time: timeStr,
+                        waiter: waiterStr,
+                        items: currentCartBackup,
+                        subtotal: subtotal,
+                        total: total,
+                        badge: badgeType,
+                        happyHourActive: !!data.isHappyHour,
+                        storniert: false
+                    };
 
-                liveJournal.unshift(newOrder);
+                    liveJournal.unshift(newOrder);
 
-                await writeCloudFields({
-                    totalRevenue: liveRevenue,
-                    salesJournal: liveJournal,
-                    itemCounts: liveCounts,
-                    stockData: liveStock,
-                    companySettings: liveCompany,
-                    lastUpdatedAt: clockStr,
-                    lastUpdatedBy: actorName
+                    transaction.set(kasseDocRef, {
+                        totalRevenue: liveRevenue,
+                        salesJournal: liveJournal,
+                        itemCounts: liveCounts,
+                        stockData: liveStock,
+                        companySettings: liveCompany,
+                        lastUpdatedAt: clockStr,
+                        lastUpdatedBy: actorName
+                    }, { merge: true });
                 });
 
                 document.getElementById('btn-create-receipt').disabled = false;
@@ -2732,41 +2926,44 @@
 
             isWritingToCloud = true;
             try {
-                const data = (await readCloudDoc()) || {};
-                const liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [...salesJournal];
-                const entry = liveJournal.find(e => e.id === entryId);
-                if (!entry || entry.storniert) return;
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    const liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [];
+                    const entry = liveJournal.find(e => e.id === entryId);
+                    if (!entry || entry.storniert) return;
 
-                const liveRevenue = Math.max(0, (data.totalRevenue || 0) - entry.total);
-                entry.storniert = true;
+                    const liveRevenue = Math.max(0, (data.totalRevenue || 0) - entry.total);
+                    entry.storniert = true;
 
-                const liveStock = data.stockData || { ...stockData };
-                const liveStockLog = Array.isArray(data.stockLog) ? data.stockLog : [...stockLog];
-                const liveCounts = data.itemCounts || { ...itemCounts };
-                const liveProducts = Array.isArray(data.products) && data.products.length > 0 ? data.products : products;
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveStockLog = Array.isArray(data.stockLog) ? data.stockLog : [];
+                    const liveCounts = data.itemCounts || {};
+                    const liveProducts = Array.isArray(data.products) ? data.products : products;
 
-                const now = new Date();
-                const clockStr = now.toLocaleTimeString('de-DE');
-                const actor = currentWaiter ? currentWaiter.name : 'Admin';
-                entry.items.forEach(item => {
-                    const prod = liveProducts.find(p => p.id === item.id);
-                    if (!prod || prod.stockMode !== 'manual') {
-                        liveStock[item.id] = (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) + item.qty;
-                        liveStockLog.unshift({ dateTime: now.toLocaleDateString('de-DE') + ' um ' + clockStr, itemName: item.name, stock: `+${item.qty} Stück (Storno durch ${actor})` });
-                    } else {
-                        liveStockLog.unshift({ dateTime: now.toLocaleDateString('de-DE') + ' um ' + clockStr, itemName: item.name, stock: `Storno durch ${actor} (Manueller Bestand unverändert)` });
-                    }
-                    liveCounts[item.name] = Math.max(0, (liveCounts[item.name] || 0) - item.qty);
-                });
+                    const now = new Date();
+                    const clockStr = now.toLocaleTimeString('de-DE');
+                    const actor = currentWaiter ? currentWaiter.name : 'Admin';
+                    entry.items.forEach(item => {
+                        const prod = liveProducts.find(p => p.id === item.id);
+                        if (!prod || prod.stockMode !== 'manual') {
+                            liveStock[item.id] = (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) + item.qty;
+                            liveStockLog.unshift({ dateTime: now.toLocaleDateString('de-DE') + ' um ' + clockStr, itemName: item.name, stock: `+${item.qty} Stück (Storno durch ${actor})` });
+                        } else {
+                            liveStockLog.unshift({ dateTime: now.toLocaleDateString('de-DE') + ' um ' + clockStr, itemName: item.name, stock: `Storno durch ${actor} (Manueller Bestand unverändert)` });
+                        }
+                        liveCounts[item.name] = Math.max(0, (liveCounts[item.name] || 0) - item.qty);
+                    });
 
-                await writeCloudFields({
-                    totalRevenue: liveRevenue,
-                    salesJournal: liveJournal,
-                    stockData: liveStock,
-                    stockLog: liveStockLog,
-                    itemCounts: liveCounts,
-                    lastUpdatedAt: clockStr,
-                    lastUpdatedBy: actor
+                    transaction.set(kasseDocRef, {
+                        totalRevenue: liveRevenue,
+                        salesJournal: liveJournal,
+                        stockData: liveStock,
+                        stockLog: liveStockLog,
+                        itemCounts: liveCounts,
+                        lastUpdatedAt: clockStr,
+                        lastUpdatedBy: actor
+                    }, { merge: true });
                 });
                 alert("Bestellung erfolgreich storniert!");
             } catch (err) {
@@ -2786,38 +2983,41 @@
 
             isWritingToCloud = true;
             try {
-                const data = (await readCloudDoc()) || {};
-                let liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [...salesJournal];
-                const entry = liveJournal.find(e => e.id === entryId);
-                if (!entry) return;
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(kasseDocRef);
+                    const data = snap.exists() ? snap.data() : {};
+                    let liveJournal = Array.isArray(data.salesJournal) ? data.salesJournal : [];
+                    const entry = liveJournal.find(e => e.id === entryId);
+                    if (!entry) return;
 
-                let liveRevenue = data.totalRevenue || 0;
-                const liveStock = data.stockData || { ...stockData };
-                const liveCounts = data.itemCounts || { ...itemCounts };
-                const liveProducts = Array.isArray(data.products) && data.products.length > 0 ? data.products : products;
+                    let liveRevenue = data.totalRevenue || 0;
+                    const liveStock = data.stockData || { ...stockData };
+                    const liveCounts = data.itemCounts || {};
+                    const liveProducts = Array.isArray(data.products) ? data.products : products;
 
-                if (!entry.storniert) {
-                    liveRevenue = Math.max(0, liveRevenue - entry.total);
-                    entry.items.forEach(item => {
-                        const prod = liveProducts.find(p => p.id === item.id);
-                        if (!prod || prod.stockMode !== 'manual') {
-                            liveStock[item.id] = (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) + item.qty;
-                        }
-                        liveCounts[item.name] = Math.max(0, (liveCounts[item.name] || 0) - item.qty);
-                    });
-                }
-                liveJournal = liveJournal.filter(e => e.id !== entryId);
+                    if (!entry.storniert) {
+                        liveRevenue = Math.max(0, liveRevenue - entry.total);
+                        entry.items.forEach(item => {
+                            const prod = liveProducts.find(p => p.id === item.id);
+                            if (!prod || prod.stockMode !== 'manual') {
+                                liveStock[item.id] = (liveStock[item.id] !== undefined ? liveStock[item.id] : 50) + item.qty;
+                            }
+                            liveCounts[item.name] = Math.max(0, (liveCounts[item.name] || 0) - item.qty);
+                        });
+                    }
+                    liveJournal = liveJournal.filter(e => e.id !== entryId);
 
-                const clockStr = new Date().toLocaleTimeString('de-DE');
-                const actor = currentWaiter ? currentWaiter.name : 'Admin';
+                    const clockStr = new Date().toLocaleTimeString('de-DE');
+                    const actor = currentWaiter ? currentWaiter.name : 'Admin';
 
-                await writeCloudFields({
-                    totalRevenue: liveRevenue,
-                    salesJournal: liveJournal,
-                    stockData: liveStock,
-                    itemCounts: liveCounts,
-                    lastUpdatedAt: clockStr,
-                    lastUpdatedBy: actor
+                    transaction.set(kasseDocRef, {
+                        totalRevenue: liveRevenue,
+                        salesJournal: liveJournal,
+                        stockData: liveStock,
+                        itemCounts: liveCounts,
+                        lastUpdatedAt: clockStr,
+                        lastUpdatedBy: actor
+                    }, { merge: true });
                 });
                 alert("Kassenbucheintrag gelöscht und Umsatz angepasst.");
             } catch (err) {
@@ -2843,7 +3043,7 @@
             stockData[newId] = 50;
             renderAdminProductsGrid();
             renderPosGrid();
-            window.savePartialToCloud({ products, stockData });
+            window.savePartialToCloud({ products, stockData: { [newId]: 50 } });
         }
 
         window.deleteProduct = function(id) {
@@ -2869,7 +3069,7 @@
                 if (immediate) {
                     window.savePartialToCloud({ products });
                 } else {
-                    productSaveTimer = setTimeout(() => window.savePartialToCloud({ products }), 400);
+                    productSaveTimer = setTimeout(() => window.savePartialToCloud({ products }), 350);
                 }
             }
         }
