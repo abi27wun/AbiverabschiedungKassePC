@@ -1,0 +1,3325 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Abi-Kassensystem</title>
+
+  <!-- SheetJS (.xlsx Excel-Export) & QRCode.js (Kleinbetragsrechnung QR) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #F5F5F7;
+      --card: #FFFFFF;
+      --border: #E5E7EB;
+      --border-light: #F0F0F2;
+      --text: #111827;
+      --text-muted: #6B7280;
+      --blue: #2563EB;
+      --blue-hover: #1D4ED8;
+      --orange: #F59E0B;
+      --orange-dark: #D97706;
+      --green: #22C55E;
+      --green-soft: #9AE6B4;
+      --green-dark: #16A34A;
+      --purple: #D8B4FE;
+      --purple-dark: #9333EA;
+      --sky: #BAE6FD;
+      --sky-text: #0369A1;
+      --red: #EF4444;
+      --red-dark: #DC2626;
+      --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.04);
+      --shadow-panel: 0 4px 18px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.4;
+      min-height: 100vh;
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* =========================================================
+       ANMELDUNG (OHNE APPLE-LOGO & OHNE BEISPIELE)
+       ========================================================= */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background-color: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #login-screen.hidden {
+      display: none;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 380px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 30px 26px;
+      box-shadow: var(--shadow-panel);
+      text-align: center;
+    }
+
+    .login-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+
+    .login-box h1 {
+      font-size: 21px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .login-box p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+    }
+
+    .login-group {
+      text-align: left;
+      margin-bottom: 14px;
+    }
+
+    .login-group label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .login-group input {
+      width: 100%;
+      padding: 11px 13px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #F9FAFB;
+      font-size: 15px;
+      color: var(--text);
+      outline: none;
+    }
+
+    .login-group input:focus {
+      border-color: var(--blue);
+      background: #FFFFFF;
+    }
+
+    .login-error {
+      display: none;
+      background: #FEE2E2;
+      color: var(--red-dark);
+      font-size: 13px;
+      padding: 9px 12px;
+      border-radius: 9px;
+      margin-bottom: 14px;
+      font-weight: 500;
+    }
+
+    .login-error.show {
+      display: block;
+    }
+
+    .btn-login-submit {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: var(--blue);
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .btn-login-submit:hover {
+      background: var(--blue-hover);
+    }
+
+    /* =========================================================
+       TOP HEADER BAR (EXAKT WIE SCREENSHOT)
+       ========================================================= */
+    .topbar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 80;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .segmented-nav {
+      display: inline-flex;
+      background: #E5E7EB;
+      padding: 3px;
+      border-radius: 10px;
+      gap: 2px;
+    }
+
+    .seg-btn {
+      border: none;
+      background: transparent;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #4B5563;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .seg-btn.active {
+      background: #FFFFFF;
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    .hh-pill {
+      background: #F3F4F6;
+      color: #6B7280;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 12.5px;
+    }
+
+    .hh-pill.active {
+      background: #DCFCE7;
+      color: #15803D;
+    }
+
+    .top-datetime {
+      color: #6B7280;
+      font-weight: 500;
+    }
+
+    .top-username {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .btn-logout-red {
+      background: var(--red);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-logout-red:hover {
+      background: var(--red-dark);
+    }
+
+    /* =========================================================
+       MAIN CONTAINER
+       ========================================================= */
+    .main-wrap {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 20px 22px 40px;
+    }
+
+    .view-section {
+      display: none;
+    }
+
+    .view-section.active {
+      display: block;
+    }
+
+    /* =========================================================
+       KASSE VIEW (EXAKT WIE SCREENSHOT 1)
+       ========================================================= */
+    .kasse-locked-banner {
+      display: none;
+      max-width: 480px;
+      margin: 70px auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 36px 28px;
+      text-align: center;
+      box-shadow: var(--shadow-panel);
+    }
+
+    .kasse-locked-banner.active {
+      display: block;
+    }
+
+    .pos-grid {
+      display: grid;
+      grid-template-columns: 1fr 375px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .pos-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Top Multiplier + Manuelle Lagerentnahme Bar */
+    .pos-action-bar {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 12px 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .mult-group {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .mult-btn {
+      min-width: 42px;
+      height: 36px;
+      padding: 0 11px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #FFFFFF;
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .mult-btn.active {
+      background: var(--blue);
+      color: #FFFFFF;
+      border-color: var(--blue);
+    }
+
+    .btn-manual-lager {
+      background: var(--orange);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-manual-lager:hover {
+      background: var(--orange-dark);
+    }
+
+    /* Category Sections & Product Cards */
+    .category-section {
+      margin-bottom: 22px;
+    }
+
+    .category-title {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    .cards-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+      gap: 14px;
+    }
+
+    .item-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: var(--shadow-card);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 92px;
+      transition: transform 0.1s ease, box-shadow 0.15s ease;
+      user-select: none;
+      position: relative;
+    }
+
+    .item-card:hover {
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .item-card:active {
+      transform: scale(0.97);
+    }
+
+    .item-card.out-of-stock {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .item-card-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    .item-card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .item-card-price {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    .item-card-price.neg {
+      color: var(--green-dark);
+    }
+
+    .item-stock-hint {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .item-stock-hint.low {
+      color: var(--orange-dark);
+    }
+
+    .item-stock-hint.empty {
+      color: var(--red-dark);
+    }
+
+    /* Right Order Panel ("Aktuelle Bestellung") */
+    .order-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow-panel);
+      position: sticky;
+      top: 72px;
+    }
+
+    .order-card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .order-list {
+      min-height: 78px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .order-empty-text {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+      padding: 18px 0;
+    }
+
+    .order-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 9px;
+      background: #F9FAFB;
+      border-radius: 10px;
+    }
+
+    .order-line-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .order-line-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .order-line-unit {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .qty-stepper {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 2px 5px;
+    }
+
+    .qty-btn {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: transparent;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text);
+    }
+
+    .qty-num {
+      font-size: 13px;
+      font-weight: 700;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .order-line-total {
+      font-size: 13.5px;
+      font-weight: 700;
+      min-width: 56px;
+      text-align: right;
+    }
+
+    .discount-applied-row {
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--purple-dark);
+      padding-top: 10px;
+    }
+
+    .order-total-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 14px 0;
+    }
+
+    .order-total-label {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .order-total-amount {
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    .btn-discount-purple {
+      width: 100%;
+      padding: 11px 14px;
+      border: none;
+      border-radius: 10px;
+      background: var(--purple);
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      transition: background 0.15s ease;
+    }
+
+    .btn-discount-purple:hover:not(:disabled) {
+      background: #C084FC;
+    }
+
+    .btn-discount-purple:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* iOS Switch & Rückgeldrechner */
+    .change-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .ios-switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .ios-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .ios-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #D1D5DB;
+      transition: 0.2s;
+      border-radius: 999px;
+    }
+
+    .ios-slider::before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.2s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+
+    .ios-switch input:checked + .ios-slider {
+      background-color: #22C55E;
+    }
+
+    .ios-switch input:checked + .ios-slider::before {
+      transform: translateX(20px);
+    }
+
+    .change-calc-box {
+      display: none;
+      background: #F9FAFB;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 11px;
+      margin-bottom: 14px;
+    }
+
+    .change-calc-box.open {
+      display: block;
+    }
+
+    .change-input-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .change-input-line input {
+      width: 115px;
+      padding: 6px 9px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 15px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .quick-cash-row {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 8px;
+    }
+
+    .cash-pill {
+      flex: 1;
+      padding: 5px 4px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: #FFFFFF;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-pay-green {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      background: var(--green-soft);
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: background 0.15s ease;
+    }
+
+    .btn-pay-green.ready {
+      background: var(--green);
+    }
+
+    .btn-pay-green.ready:hover {
+      background: var(--green-dark);
+    }
+
+    .order-bottom-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-clear-gray {
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: #E5E7EB;
+      color: #374151;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-last-receipt {
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: var(--sky);
+      color: #FFFFFF;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-last-receipt.has-order {
+      background: #38BDF8;
+    }
+
+    /* =========================================================
+       ADMIN VIEW (EXAKT WIE SCREENSHOT 2 + ROLLEN-TAB)
+       ========================================================= */
+    .admin-status-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    @media (max-width: 1024px) {
+      .admin-status-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 580px) {
+      .admin-status-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .status-kpi-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 92px;
+    }
+
+    .status-kpi-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .status-kpi-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .kpi-revenue-val {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .kpi-state-green {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .kpi-state-red {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--red);
+    }
+
+    .kpi-cloud-text {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    /* Admin Tiles Grid (7 per row on wide screens like screenshot 2) */
+    .admin-tiles-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 1220px) {
+      .admin-tiles-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    @media (max-width: 720px) {
+      .admin-tiles-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .admin-tile-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 11px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.12s ease, box-shadow 0.15s ease;
+      text-align: center;
+    }
+
+    .admin-tile-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+    }
+
+    .admin-tile-icon {
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .admin-tile-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* Admin Subpages */
+    .admin-subpage {
+      display: none;
+    }
+
+    .admin-subpage.active {
+      display: block;
+    }
+
+    .subpage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-back-tiles {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 15px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--blue);
+      cursor: pointer;
+      box-shadow: var(--shadow-card);
+    }
+
+    .panel-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 18px;
+    }
+
+    .panel-card h2 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .field input, .field select {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: #F9FAFB;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .perm-checks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .perm-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #F9FAFB;
+      border: 1px solid var(--border);
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .perm-item input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue);
+    }
+
+    .btn-primary-blue {
+      padding: 9px 16px;
+      border-radius: 9px;
+      border: none;
+      background: var(--blue);
+      color: #FFFFFF;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-outline {
+      padding: 8px 14px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: #FFFFFF;
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    th {
+      text-align: left;
+      padding: 9px 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--border-light);
+      vertical-align: middle;
+    }
+
+    .sm-btn {
+      padding: 5px 10px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: #F9FAFB;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .sm-btn.danger {
+      color: var(--red-dark);
+      background: #FEF2F2;
+      border-color: #FECACA;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .tag-green { background: #DCFCE7; color: #15803D; }
+    .tag-red { background: #FEE2E2; color: #B91C1C; }
+    .tag-blue { background: #DBEAFE; color: #1D4ED8; }
+
+    /* =========================================================
+       MODALS (MANUELLE LAGERENTNAHME, RABATT, BELEG)
+       ========================================================= */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #FFFFFF;
+      border-radius: 18px;
+      width: 100%;
+      max-width: 440px;
+      padding: 22px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .modal-head h3 {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .modal-close-x {
+      border: none;
+      background: #F3F4F6;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .log-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #F9FAFB;
+      border: 1px solid var(--border-light);
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .log-row.undone {
+      opacity: 0.45;
+      text-decoration: line-through;
+    }
+
+    .receipt-box {
+      background: #F9FAFB;
+      border-radius: 12px;
+      padding: 14px;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .receipt-sep {
+      border-top: 1px dashed #D1D5DB;
+      margin: 8px 0;
+    }
+
+    #qrcode-box {
+      display: flex;
+      justify-content: center;
+      margin: 12px auto 6px;
+      padding: 8px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      width: fit-content;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #receipt-modal, #receipt-modal * { visibility: visible; }
+      #receipt-modal { position: absolute; inset: 0; background: #fff; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =========================================================
+       ANMELDESEITE (OHNE APPLE-LOGO & OHNE BEISPIELE)
+       ========================================================= -->
+  <div id="login-screen">
+    <div class="login-box">
+      <div class="login-icon">🍸</div>
+      <h1>Abi-Kassensystem</h1>
+      <p>Bitte Zugangsdaten eingeben</p>
+
+      <div class="login-error" id="login-error">Benutzername oder Passwort falsch.</div>
+
+      <form id="login-form">
+        <div class="login-group">
+          <label for="login-id">Benutzername / ID</label>
+          <input type="text" id="login-id" autocomplete="username" required />
+        </div>
+        <div class="login-group">
+          <label for="login-pass">Passwort</label>
+          <input type="password" id="login-pass" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn-login-submit">Anmelden</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       TOP HEADER BAR (EXAKT WIE SCREENSHOT)
+       ========================================================= -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="brand-title">
+        <span>🍸</span>
+        <span id="brand-title-text">Abi-Kassensystem</span>
+      </div>
+
+      <div class="segmented-nav" id="segmented-nav">
+        <button type="button" class="seg-btn active" data-nav="kasse">Kasse</button>
+        <button type="button" class="seg-btn" id="nav-admin-btn" data-nav="admin">Admin</button>
+      </div>
+    </div>
+
+    <div class="topbar-right tabular">
+      <span class="hh-pill" id="top-hh-pill">Happy Hour: Inaktiv</span>
+      <span class="top-datetime" id="top-datetime">--.--.----, --:--:--</span>
+      <span class="top-username" id="top-user-label">–</span>
+      <button type="button" class="btn-logout-red" id="btn-logout">Abmelden</button>
+    </div>
+  </header>
+
+  <main class="main-wrap">
+    <!-- =========================================================
+         VIEW 1: KASSE (EXAKT WIE SCREENSHOT 1)
+         ========================================================= -->
+    <section id="view-kasse" class="view-section active">
+      <div class="kasse-locked-banner" id="kasse-locked-banner">
+        <div style="font-size:40px; margin-bottom:10px;">🔒</div>
+        <h2 style="font-size:20px; font-weight:700; margin-bottom:8px;">Kassenbetrieb pausiert</h2>
+        <p style="font-size:14px; color:var(--text-muted);">
+          Der Administrator hat den Kassenbetrieb aktuell deaktiviert. Sobald er wieder aktiviert wird, erscheint die Kasse automatisch.
+        </p>
+      </div>
+
+      <div class="pos-grid" id="pos-main-grid">
+        <!-- Linke Seite: Multiplikator + Manuelle Lagerentnahme + Kategorien -->
+        <div>
+          <div class="pos-action-bar">
+            <div class="mult-group" id="mult-group">
+              <button type="button" class="mult-btn active" data-mult="1">1x</button>
+              <button type="button" class="mult-btn" data-mult="2">2x</button>
+              <button type="button" class="mult-btn" data-mult="3">3x</button>
+              <button type="button" class="mult-btn" data-mult="4">4x</button>
+              <button type="button" class="mult-btn" data-mult="5">5x</button>
+              <button type="button" class="mult-btn" data-mult="10">10x</button>
+            </div>
+
+            <button type="button" class="btn-manual-lager" id="btn-open-manual-lager">
+              <span>✋</span>
+              <span>Manuelle Lagerentnahme</span>
+            </button>
+          </div>
+
+          <div id="categories-container"></div>
+        </div>
+
+        <!-- Rechte Seite: Aktuelle Bestellung -->
+        <aside class="order-card">
+          <div class="order-card-title">Aktuelle Bestellung</div>
+
+          <div class="order-list" id="order-list">
+            <div class="order-empty-text">Warenkorb ist leer</div>
+          </div>
+
+          <div class="discount-applied-row tabular" id="discount-applied-row">
+            <span id="discount-applied-name">Rabatt</span>
+            <span id="discount-applied-val">-0,00 €</span>
+          </div>
+
+          <div class="order-total-row tabular">
+            <span class="order-total-label">Gesamt:</span>
+            <span class="order-total-amount" id="order-total-display">0,00 €</span>
+          </div>
+
+          <button type="button" class="btn-discount-purple" id="btn-open-discount">
+            <span>🏷️</span>
+            <span id="btn-discount-text">Rabatt auswählen</span>
+          </button>
+
+          <div class="change-toggle-row">
+            <span>💵 Rückgeldrechner anzeigen</span>
+            <label class="ios-switch">
+              <input type="checkbox" id="toggle-change-calc" />
+              <span class="ios-slider"></span>
+            </label>
+          </div>
+
+          <div class="change-calc-box tabular" id="change-calc-box">
+            <div class="change-input-line">
+              <span style="font-size:13px; color:var(--text-muted); font-weight:600;">Gegeben (€)</span>
+              <input type="number" id="tender-input" step="0.50" min="0" placeholder="0,00" />
+            </div>
+            <div class="quick-cash-row">
+              <button type="button" class="cash-pill" data-cash="exact">Passend</button>
+              <button type="button" class="cash-pill" data-cash="5">5 €</button>
+              <button type="button" class="cash-pill" data-cash="10">10 €</button>
+              <button type="button" class="cash-pill" data-cash="20">20 €</button>
+              <button type="button" class="cash-pill" data-cash="50">50 €</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:13.5px; font-weight:700;">
+              <span>Rückgeld:</span>
+              <span id="change-val-display" style="color:var(--green-dark);">0,00 €</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn-pay-green" id="btn-pay-book" disabled>
+            ✓ Bezahlen &amp; Buchen
+          </button>
+
+          <div class="order-bottom-btns">
+            <button type="button" class="btn-clear-gray" id="btn-clear-order">Leeren</button>
+            <button type="button" class="btn-last-receipt" id="btn-last-receipt">🧾 Letzter Beleg</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         VIEW 2: ADMIN (EXAKT WIE SCREENSHOT 2 + EXTRA TAB ROLLEN)
+         ========================================================= -->
+    <section id="view-admin" class="view-section">
+      <!-- Obere 4 Status-Karten -->
+      <div class="admin-status-row">
+        <div class="status-kpi-card tabular">
+          <div class="status-kpi-label">Gesamtumsatz (Live)</div>
+          <div class="status-kpi-bottom">
+            <span class="kpi-revenue-val" id="admin-live-revenue">0.00 €</span>
+          </div>
+        </div>
+
+        <div class="status-kpi-card">
+          <div class="status-kpi-label">Kassenbetrieb</div>
+          <div class="status-kpi-bottom">
+            <span class="kpi-state-green" id="admin-kasse-state-text">Aktiv</span>
+            <label class="ios-switch">
+              <input type="checkbox" id="admin-kasse-switch" checked />
+              <span class="ios-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="status-kpi-card">
+          <div class="status-kpi-label">Happy Hour Modus</div>
+          <div class="status-kpi-bottom">
+            <span class="kpi-state-red" id="admin-hh-state-text">Inaktiv</span>
+            <label class="ios-switch">
+              <input type="checkbox" id="admin-hh-switch" />
+              <span class="ios-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="status-kpi-card">
+          <div class="status-kpi-label">Cloud-Synchronisation</div>
+          <div class="status-kpi-bottom">
+            <span class="kpi-cloud-text" id="admin-cloud-status">Cloud-Sync: Verbunden (bereit zum Speichern)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kachel-Übersicht -->
+      <div id="admin-tiles-home">
+        <div class="admin-tiles-grid">
+          <div class="admin-tile-card" data-subpage="sub-products">
+            <div class="admin-tile-icon">🍹</div>
+            <div class="admin-tile-title">Produkte &amp; Preise</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-lager">
+            <div class="admin-tile-icon">📦</div>
+            <div class="admin-tile-title">Lagerbestand</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-journal">
+            <div class="admin-tile-icon">📒</div>
+            <div class="admin-tile-title">Kassenbuch</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-stats">
+            <div class="admin-tile-icon">📊</div>
+            <div class="admin-tile-title">Verkaufsstatistik</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-happyhour">
+            <div class="admin-tile-icon">⚡</div>
+            <div class="admin-tile-title">Happy Hour</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-discounts">
+            <div class="admin-tile-icon">🏷️</div>
+            <div class="admin-tile-title">Rabattknöpfe</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-company">
+            <div class="admin-tile-icon">🧾</div>
+            <div class="admin-tile-title">Beleg &amp; Firma</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-users">
+            <div class="admin-tile-icon">👥</div>
+            <div class="admin-tile-title">Personal &amp; Logins</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-roles">
+            <div class="admin-tile-icon">🛡️</div>
+            <div class="admin-tile-title">Rollen &amp; Rechte</div>
+          </div>
+
+          <div class="admin-tile-card" data-subpage="sub-cloud">
+            <div class="admin-tile-icon">⚙️</div>
+            <div class="admin-tile-title">Cloud &amp; Reset</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: PRODUKTE & PREISE -->
+      <div id="sub-products" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">🍹 Produkte &amp; Preise</h2>
+        </div>
+
+        <div class="panel-card">
+          <h2 id="prod-form-heading">Neues Produkt anlegen</h2>
+          <form id="product-form" class="form-grid">
+            <input type="hidden" id="edit-prod-id" />
+            <div class="field">
+              <label for="prod-name">Produktname</label>
+              <input type="text" id="prod-name" placeholder="z. B. Longdrink" required />
+            </div>
+            <div class="field">
+              <label for="prod-price">Preis (€)</label>
+              <input type="number" id="prod-price" step="0.05" placeholder="6.00" required />
+            </div>
+            <div class="field">
+              <label for="prod-cat">Kategorie</label>
+              <input type="text" id="prod-cat" list="cat-suggestions" placeholder="Getränke" required />
+              <datalist id="cat-suggestions">
+                <option value="Getränke"></option>
+                <option value="Alkoholfrei"></option>
+                <option value="Essen & Snacks"></option>
+              </datalist>
+            </div>
+            <div class="field">
+              <label for="prod-mode">Bestandsführung</label>
+              <select id="prod-mode">
+                <option value="auto">Automatisch (abziehen bei Verkauf)</option>
+                <option value="manual">Manuell (nur Lagerentnahme)</option>
+                <option value="unlimited">Unbegrenzt (ohne Bestand)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="prod-stock">Anfangsbestand</label>
+              <input type="number" id="prod-stock" min="0" value="50" />
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="submit" class="btn-primary-blue" id="btn-save-prod">Speichern</button>
+              <button type="button" class="btn-outline" id="btn-cancel-prod" style="display:none;">Abbrechen</button>
+            </div>
+          </form>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Produkt</th>
+                  <th>Kategorie</th>
+                  <th>Preis</th>
+                  <th>Bestandsart</th>
+                  <th>Bestand</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="admin-products-tbody" class="tabular"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: LAGERBESTAND (ADMIN VOLLZUGRIFF) -->
+      <div id="sub-lager" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">📦 Lagerbestand &amp; Bewegungen</h2>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:18px; align-items:start;">
+          <div class="panel-card">
+            <h2>Aktuelle Bestände</h2>
+            <div id="admin-lager-list"></div>
+          </div>
+
+          <div class="panel-card">
+            <h2>Lagerprotokoll (alle Nutzer)</h2>
+            <div id="admin-lager-logs"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: KASSENBUCH -->
+      <div id="sub-journal" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">📒 Kassenbuch &amp; Storno</h2>
+        </div>
+
+        <div class="panel-card">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Beleg-Nr.</th>
+                  <th>Zeit</th>
+                  <th>Bediener</th>
+                  <th>Positionen</th>
+                  <th>Gesamt</th>
+                  <th>Status</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="journal-tbody" class="tabular"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: VERKAUFSSTATISTIK -->
+      <div id="sub-stats" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">📊 Verkaufsstatistik</h2>
+        </div>
+
+        <div class="panel-card">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Produkt</th>
+                  <th>Kategorie</th>
+                  <th>Verkaufte Menge</th>
+                  <th>Brutto-Umsatz</th>
+                </tr>
+              </thead>
+              <tbody id="stats-tbody" class="tabular"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: HAPPY HOUR -->
+      <div id="sub-happyhour" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">⚡ Happy Hour Einstellungen</h2>
+        </div>
+
+        <div class="panel-card">
+          <h2>Happy Hour Konfiguration</h2>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+            Du kannst die Happy Hour direkt oben auf der Admin-Übersicht per Schalter aktivieren oder hier den Rabattsatz und die Kategorie festlegen.
+          </p>
+          <form id="hh-form" class="form-grid">
+            <div class="field">
+              <label for="hh-label">Bezeichnung</label>
+              <input type="text" id="hh-label" value="Happy Hour" required />
+            </div>
+            <div class="field">
+              <label for="hh-percent">Rabatt (%)</label>
+              <input type="number" id="hh-percent" min="1" max="100" value="20" required />
+            </div>
+            <div class="field">
+              <label for="hh-cat">Gilt für Kategorie</label>
+              <input type="text" id="hh-cat" value="Alle" required />
+            </div>
+            <button type="submit" class="btn-primary-blue">Speichern</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: RABATTKNÖPFE -->
+      <div id="sub-discounts" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">🏷️ Rabattknöpfe verwalten</h2>
+        </div>
+
+        <div class="panel-card">
+          <h2>Neuen Rabattknopf anlegen</h2>
+          <form id="discount-form" class="form-grid">
+            <div class="field">
+              <label for="disc-name">Name</label>
+              <input type="text" id="disc-name" placeholder="z. B. Helfer-Rabatt" required />
+            </div>
+            <div class="field">
+              <label for="disc-type">Rabatt-Art</label>
+              <select id="disc-type">
+                <option value="percent">Prozent (%)</option>
+                <option value="fixed">Festbetrag (€)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="disc-value">Wert</label>
+              <input type="number" id="disc-value" step="0.5" min="0.1" placeholder="50" required />
+            </div>
+            <button type="submit" class="btn-primary-blue">Hinzufügen</button>
+          </form>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bezeichnung</th>
+                  <th>Art</th>
+                  <th>Wert</th>
+                  <th>Aktion</th>
+                </tr>
+              </thead>
+              <tbody id="discounts-tbody" class="tabular"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: BELEG & FIRMA -->
+      <div id="sub-company" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">🧾 Beleg &amp; Firma (§ 33 UStDV)</h2>
+        </div>
+
+        <div class="panel-card">
+          <form id="company-form" class="form-grid">
+            <div class="field">
+              <label for="comp-name">Name / Gesellschaft</label>
+              <input type="text" id="comp-name" required />
+            </div>
+            <div class="field">
+              <label for="comp-street">Straße &amp; Hausnummer</label>
+              <input type="text" id="comp-street" required />
+            </div>
+            <div class="field">
+              <label for="comp-zip">PLZ &amp; Ort</label>
+              <input type="text" id="comp-zip" required />
+            </div>
+            <div class="field">
+              <label for="comp-taxid">Steuernummer / USt-IdNr.</label>
+              <input type="text" id="comp-taxid" />
+            </div>
+            <div class="field">
+              <label for="comp-taxmode">Umsatzsteuer-Regelung</label>
+              <select id="comp-taxmode">
+                <option value="standard">Regelbesteuerung (inkl. MwSt.)</option>
+                <option value="kleinunternehmer">Kleinunternehmer (§ 19 UStG)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="comp-taxrate">Steuersatz (%)</label>
+              <select id="comp-taxrate">
+                <option value="19">19 %</option>
+                <option value="7">7 %</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="comp-footer">Fußzeile auf dem Bon</label>
+              <input type="text" id="comp-footer" />
+            </div>
+            <button type="submit" class="btn-primary-blue">Firmendaten speichern</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: PERSONAL & LOGINS -->
+      <div id="sub-users" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">👥 Personal &amp; Logins</h2>
+        </div>
+
+        <div class="panel-card">
+          <h2>Neuen Account erstellen</h2>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+            Wähle beim Erstellen eines neuen Accounts die passende Rolle aus. Die Berechtigungen der Rollen verwaltest du unter <strong>Rollen &amp; Rechte</strong>.
+          </p>
+          <form id="add-account-form" class="form-grid">
+            <div class="field">
+              <label for="new-acc-id">Benutzername / ID</label>
+              <input type="text" id="new-acc-id" required />
+            </div>
+            <div class="field">
+              <label for="new-acc-pass">Passwort</label>
+              <input type="text" id="new-acc-pass" required />
+            </div>
+            <div class="field">
+              <label for="new-acc-role">Rolle auswählen</label>
+              <select id="new-acc-role" required></select>
+            </div>
+            <button type="submit" class="btn-primary-blue">Account anlegen</button>
+          </form>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Benutzername / ID</th>
+                  <th>Rolle</th>
+                  <th>Passwort</th>
+                  <th>Status</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="accounts-tbody" class="tabular"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: ROLLEN & RECHTE (EXTRA TAB IM ADMINBEREICH) -->
+      <div id="sub-roles" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">🛡️ Rollen &amp; Berechtigungen</h2>
+        </div>
+
+        <div class="panel-card">
+          <h2>Neue Rolle anlegen</h2>
+          <form id="add-role-form">
+            <div class="form-grid" style="margin-bottom:12px;">
+              <div class="field">
+                <label for="new-role-name">Rollenname (z. B. Kellner, Theke, Schichtleiter)</label>
+                <input type="text" id="new-role-name" required />
+              </div>
+            </div>
+
+            <div class="perm-checks-grid">
+              <label class="perm-item"><input type="checkbox" id="nr-canSell" checked /> Kasse bedienen (Verkaufen)</label>
+              <label class="perm-item"><input type="checkbox" id="nr-canDiscount" checked /> Rabatte auswählen</label>
+              <label class="perm-item"><input type="checkbox" id="nr-canLagerMinus" checked /> Manuelle Lagerentnahme (−)</label>
+              <label class="perm-item"><input type="checkbox" id="nr-canLagerPlus" /> Lager-Nachschub (+) &amp; alle rückgängig</label>
+              <label class="perm-item"><input type="checkbox" id="nr-canStorno" /> Belege stornieren</label>
+              <label class="perm-item"><input type="checkbox" id="nr-canAdmin" /> Adminbereich verwalten</label>
+            </div>
+
+            <button type="submit" class="btn-primary-blue">Rolle speichern</button>
+          </form>
+        </div>
+
+        <div class="panel-card">
+          <h2>Vorhandene Rollen bearbeiten</h2>
+          <div id="roles-editor-list"></div>
+        </div>
+      </div>
+
+      <!-- SUBPAGE: CLOUD & RESET -->
+      <div id="sub-cloud" class="admin-subpage">
+        <div class="subpage-header">
+          <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
+          <h2 style="font-size:18px;">⚙️ Cloud-Export &amp; Backup</h2>
+        </div>
+
+        <div class="panel-card">
+          <h2>Excel-Abrechnung &amp; Datensicherung</h2>
+          <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:16px;">
+            Lädt das komplette Kassenbuch, die Verkaufsstatistik, den Lagerbestand und alle Lagerbewegungen als Excel-Datei (<code>.xlsx</code>) herunter.
+          </p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn-primary-blue" id="btn-export-xlsx">Excel-Datei (.xlsx) herunterladen</button>
+            <button type="button" class="btn-outline" id="btn-export-json">JSON-Backup speichern</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       MODAL 1: MANUELLE LAGERENTNAHME (FÜR KELLNER & ADMIN)
+       ========================================================= -->
+  <div class="modal-overlay" id="manual-lager-modal">
+    <div class="modal-box" style="max-width:480px;">
+      <div class="modal-head">
+        <h3>✋ Manuelle Lagerentnahme</h3>
+        <button type="button" class="modal-close-x" data-close-modal="manual-lager-modal">×</button>
+      </div>
+
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+        Produkt auswählen und entnommene Menge abziehen. Du kannst jeweils deine <strong>letzte Entnahme</strong> rückgängig machen.
+      </p>
+
+      <form id="manual-lager-form" style="display:flex; flex-direction:column; gap:12px; margin-bottom:18px;">
+        <div class="field">
+          <label for="ml-product">Produkt auswählen</label>
+          <select id="ml-product" required></select>
+        </div>
+
+        <div class="field">
+          <label for="ml-amount">Entnommene Menge (Minus-Zahl, z. B. -1)</label>
+          <input type="number" id="ml-amount" step="1" placeholder="-1" required />
+        </div>
+
+        <button type="submit" class="btn-manual-lager" style="width:100%; justify-content:center; padding:11px;">
+          Entnahme vom Bestand abziehen (−)
+        </button>
+      </form>
+
+      <div style="border-top:1px solid var(--border-light); padding-top:12px;">
+        <div style="font-size:13px; font-weight:700; margin-bottom:8px;">Deine letzten Entnahmen</div>
+        <div id="ml-history-list" style="max-height:220px; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 2: RABATT AUSWÄHLEN
+       ========================================================= -->
+  <div class="modal-overlay" id="discount-modal">
+    <div class="modal-box" style="max-width:390px;">
+      <div class="modal-head">
+        <h3>🏷️ Rabatt auswählen</h3>
+        <button type="button" class="modal-close-x" data-close-modal="discount-modal">×</button>
+      </div>
+      <div id="discount-modal-options" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 3: KLEINBETRAGSRECHNUNG (§ 33 UStDV) & QR-CODE
+       ========================================================= -->
+  <div class="modal-overlay" id="receipt-modal">
+    <div class="modal-box" style="max-width:410px; text-align:center;">
+      <div class="modal-head no-print">
+        <h3>🧾 Kassenbeleg</h3>
+        <button type="button" class="modal-close-x" data-close-modal="receipt-modal">×</button>
+      </div>
+
+      <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">
+        Kleinbetragsrechnung gem. § 33 UStDV
+      </div>
+      <div id="rec-comp-name" style="font-size:17px; font-weight:700; margin-top:2px;"></div>
+      <div id="rec-comp-addr" style="font-size:12px; color:var(--text-muted);"></div>
+      <div id="rec-meta" style="font-size:12px; color:var(--text-muted); margin-top:4px; font-weight:600;"></div>
+
+      <div class="receipt-box tabular" id="rec-body" style="text-align:left;"></div>
+
+      <div id="qrcode-box"></div>
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">
+        QR-Code für digitalen Belegnachweis
+      </div>
+
+      <div class="no-print" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button type="button" class="btn-outline" onclick="window.print()">Drucken / PDF</button>
+        <button type="button" class="btn-primary-blue" data-close-modal="receipt-modal">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       FIREBASE CLOUD FIRESTORE & LOGIK
+       ========================================================= -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      getDoc,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      limit,
+      increment,
+      writeBatch
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBe-Mn1CMIVBNXl-XRjVkS_1LH6yN7JRF4",
+      authDomain: "abi27wun.firebaseapp.com",
+      projectId: "abi27wun",
+      storageBucket: "abi27wun.firebasestorage.app",
+      messagingSenderId: "1060588154453",
+      appId: "1:1060588154453:web:80025063f74e274c9feedc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const configDocRef = doc(db, "kasse_apple_v3", "konfiguration");
+    const productsCol = collection(db, "kasse_apple_v3", "daten", "produkte");
+    const discountsCol = collection(db, "kasse_apple_v3", "daten", "rabatte");
+    const ordersCol = collection(db, "kasse_apple_v3", "daten", "buchungen");
+    const lagerLogsCol = collection(db, "kasse_apple_v3", "daten", "lager_logs");
+
+    const DEFAULT_ROLES = [
+      {
+        id: "admin",
+        name: "Admin",
+        system: true,
+        permissions: {
+          canSell: true,
+          canDiscount: true,
+          canLagerMinus: true,
+          canLagerPlus: true,
+          canStorno: true,
+          canAdmin: true
+        }
+      },
+      {
+        id: "kellner",
+        name: "Kellner",
+        system: false,
+        permissions: {
+          canSell: true,
+          canDiscount: true,
+          canLagerMinus: true,
+          canLagerPlus: false,
+          canStorno: false,
+          canAdmin: false
+        }
+      }
+    ];
+
+    const DEFAULT_ACCOUNTS = [
+      { id: "admin", displayName: "Jonas", pass: "abi2027", roleId: "admin", active: true }
+    ];
+
+    let products = [];
+    let discounts = [];
+    let orders = [];
+    let lagerLogs = [];
+    let settings = {
+      initialized: false,
+      kasseOpen: true,
+      roles: DEFAULT_ROLES,
+      accounts: DEFAULT_ACCOUNTS,
+      company: {
+        name: "Abi-Kassensystem",
+        street: "Musterstraße 1",
+        zipCity: "95686 Fichtelberg",
+        taxId: "",
+        taxMode: "standard",
+        defaultTaxRate: 19,
+        footerText: "Vielen Dank für Ihren Besuch!"
+      },
+      happyHour: {
+        enabled: false,
+        label: "Happy Hour",
+        discountPercent: 20,
+        categoryFilter: "Alle"
+      }
+    };
+
+    let currentUser = null;
+    let cart = {};
+    let selectedMultiplier = 1;
+    let selectedDiscountChoice = "auto";
+
+    const esc = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const formatEUR = (val) =>
+      Number(val || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+
+    function updateDateTime() {
+      const now = new Date();
+      const d = now.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const t = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      document.getElementById("top-datetime").textContent = `${d}, ${t}`;
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    function getAccountObj(id) {
+      if (!id) return null;
+      return settings.accounts.find((a) => a.id.toLowerCase() === id.toLowerCase()) || null;
+    }
+
+    function getRoleObj(roleId) {
+      return settings.roles.find((r) => r.id === roleId) || settings.roles.find((r) => r.id === "kellner") || DEFAULT_ROLES[1];
+    }
+
+    function getCurrentPermissions() {
+      const acc = getAccountObj(currentUser?.id);
+      if (!acc) return { canSell: false, canDiscount: false, canLagerMinus: false, canLagerPlus: false, canStorno: false, canAdmin: false };
+      const role = getRoleObj(acc.roleId || acc.role);
+      if (role.id === "admin") {
+        return { canSell: true, canDiscount: true, canLagerMinus: true, canLagerPlus: true, canStorno: true, canAdmin: true };
+      }
+      return {
+        canSell: !!role.permissions?.canSell,
+        canDiscount: !!role.permissions?.canDiscount,
+        canLagerMinus: !!role.permissions?.canLagerMinus,
+        canLagerPlus: !!role.permissions?.canLagerPlus,
+        canStorno: !!role.permissions?.canStorno,
+        canAdmin: !!role.permissions?.canAdmin
+      };
+    }
+
+    // Erstbefüllung passend zu deinen Kategorien & Produkten
+    async function ensureInitialized() {
+      try {
+        const snap = await getDoc(configDocRef);
+        if (!snap.exists() || !snap.data().initialized) {
+          const batch = writeBatch(db);
+          batch.set(configDocRef, { ...settings, initialized: true }, { merge: true });
+
+          const starterProducts = [
+            { id: "init_longdrink", name: "Longdrink", price: 6.0, category: "Getränke", stockMode: "manual", stock: 100 },
+            { id: "init_shot", name: "Shot", price: 2.0, category: "Getränke", stockMode: "manual", stock: 120 },
+            { id: "init_cocktail", name: "Cocktail", price: 7.0, category: "Getränke", stockMode: "manual", stock: 80 },
+            { id: "init_cola", name: "Cola / Fanta", price: 2.5, category: "Alkoholfrei", stockMode: "manual", stock: 150 },
+            { id: "init_wasser", name: "Wasser", price: 2.0, category: "Alkoholfrei", stockMode: "manual", stock: 150 },
+            { id: "init_alkfrei", name: "Alkoholfreies", price: 3.0, category: "Alkoholfrei", stockMode: "manual", stock: 80 },
+            { id: "init_snack", name: "Snack / Chips", price: 1.5, category: "Essen & Snacks", stockMode: "auto", stock: 100 }
+          ];
+          starterProducts.forEach((p) => {
+            const { id, ...rest } = p;
+            batch.set(doc(productsCol, id), rest);
+          });
+
+          batch.set(doc(discountsCol, "init_helfer"), { name: "Helfer-Rabatt (50 %)", type: "percent", value: 50 });
+          await batch.commit();
+        }
+      } catch (err) {
+        document.getElementById("admin-cloud-status").textContent = `Cloud-Fehler: ${err.message}`;
+        document.getElementById("admin-cloud-status").style.color = "var(--red)";
+      }
+    }
+    ensureInitialized();
+
+    // =========================================================
+    // CLOUD FIRESTORE LISTENERS
+    // =========================================================
+    onSnapshot(configDocRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        settings = {
+          ...settings,
+          ...data,
+          roles: Array.isArray(data.roles) && data.roles.length > 0 ? data.roles : DEFAULT_ROLES,
+          accounts: Array.isArray(data.accounts) && data.accounts.length > 0 ? data.accounts : DEFAULT_ACCOUNTS,
+          company: { ...settings.company, ...(data.company || {}) },
+          happyHour: { ...settings.happyHour, ...(data.happyHour || {}) }
+        };
+        applyPermissionsAndStatusUI();
+        renderRolesEditor();
+        renderAccountsTable();
+        renderCategoriesAndProducts();
+        renderCart();
+      }
+    });
+
+    onSnapshot(productsCol, (snap) => {
+      products = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.name || "").localeCompare(b.name || ""));
+      renderCategoriesAndProducts();
+      renderCart();
+      renderAdminProducts();
+      renderAdminLager();
+      renderManualLagerDropdown();
+    });
+
+    onSnapshot(discountsCol, (snap) => {
+      discounts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderAdminDiscounts();
+      renderCart();
+    });
+
+    onSnapshot(query(ordersCol, orderBy("timestampMs", "desc")), (snap) => {
+      orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const lastBtn = document.getElementById("btn-last-receipt");
+      lastBtn.classList.toggle("has-order", orders.length > 0);
+      renderJournalAndStats();
+    });
+
+    onSnapshot(query(lagerLogsCol, orderBy("timestampMs", "desc"), limit(60)), (snap) => {
+      lagerLogs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderAdminLagerLogs();
+      renderManualLagerHistory();
+    });
+
+    // =========================================================
+    // LOGIN & SESSION
+    // =========================================================
+    function restoreSession() {
+      try {
+        const saved = sessionStorage.getItem("abi_kasse_user");
+        if (saved) {
+          currentUser = JSON.parse(saved);
+          document.getElementById("login-screen").classList.add("hidden");
+          applyPermissionsAndStatusUI();
+        }
+      } catch (_) {}
+    }
+
+    document.getElementById("login-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const idVal = document.getElementById("login-id").value.trim().toLowerCase();
+      const passVal = document.getElementById("login-pass").value;
+      const errEl = document.getElementById("login-error");
+
+      const acc = settings.accounts.find(
+        (a) => a.id.toLowerCase() === idVal && a.pass === passVal && a.active !== false
+      );
+
+      if (!acc) {
+        errEl.classList.add("show");
+        return;
+      }
+
+      errEl.classList.remove("show");
+      currentUser = { id: acc.id };
+      sessionStorage.setItem("abi_kasse_user", JSON.stringify(currentUser));
+      document.getElementById("login-form").reset();
+      document.getElementById("login-screen").classList.add("hidden");
+      switchTopTab("kasse");
+      applyPermissionsAndStatusUI();
+    });
+
+    document.getElementById("btn-logout").addEventListener("click", () => {
+      currentUser = null;
+      cart = {};
+      sessionStorage.removeItem("abi_kasse_user");
+      document.getElementById("login-screen").classList.remove("hidden");
+    });
+
+    function switchTopTab(tab) {
+      document.querySelectorAll(".seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.nav === tab));
+      document.querySelectorAll(".view-section").forEach((s) => s.classList.remove("active"));
+      document.getElementById(`view-${tab}`).classList.add("active");
+      if (tab === "admin") {
+        document.getElementById("admin-tiles-home").style.display = "block";
+        document.querySelectorAll(".admin-subpage").forEach((p) => p.classList.remove("active"));
+      }
+    }
+
+    document.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.nav === "admin" && !getCurrentPermissions().canAdmin) return;
+        switchTopTab(btn.dataset.nav);
+      });
+    });
+
+    function applyPermissionsAndStatusUI() {
+      if (!currentUser) return;
+      const acc = getAccountObj(currentUser.id);
+      if (!acc || acc.active === false) {
+        document.getElementById("btn-logout").click();
+        return;
+      }
+
+      const role = getRoleObj(acc.roleId || acc.role);
+      const perms = getCurrentPermissions();
+
+      const labelName = acc.displayName ? `${acc.displayName} (${acc.id}(${role.name}))` : `${acc.id} (${role.name})`;
+      document.getElementById("top-user-label").textContent = labelName;
+
+      // Admin-Tab nur anzeigen, wenn Rolle Adminrechte hat
+      document.getElementById("nav-admin-btn").style.display = perms.canAdmin ? "inline-block" : "none";
+      if (!perms.canAdmin && document.getElementById("view-admin").classList.contains("active")) {
+        switchTopTab("kasse");
+      }
+
+      // Manuelle Lagerentnahme Button
+      document.getElementById("btn-open-manual-lager").style.display =
+        perms.canLagerMinus || perms.canLagerPlus ? "inline-flex" : "none";
+
+      // Rabatt Button
+      document.getElementById("btn-open-discount").disabled = !perms.canDiscount;
+
+      // Happy Hour Status
+      const hhOn = !!settings.happyHour?.enabled;
+      const hhPill = document.getElementById("top-hh-pill");
+      hhPill.textContent = hhOn ? `Happy Hour: Aktiv (-${settings.happyHour.discountPercent}%)` : "Happy Hour: Inaktiv";
+      hhPill.classList.toggle("active", hhOn);
+
+      const adminHhText = document.getElementById("admin-hh-state-text");
+      adminHhText.textContent = hhOn ? "Aktiv" : "Inaktiv";
+      adminHhText.className = hhOn ? "kpi-state-green" : "kpi-state-red";
+      document.getElementById("admin-hh-switch").checked = hhOn;
+
+      // Kassenbetrieb Status
+      const kasseOpen = settings.kasseOpen !== false;
+      const adminKasseText = document.getElementById("admin-kasse-state-text");
+      adminKasseText.textContent = kasseOpen ? "Aktiv" : "Gesperrt";
+      adminKasseText.className = kasseOpen ? "kpi-state-green" : "kpi-state-red";
+      document.getElementById("admin-kasse-switch").checked = kasseOpen;
+
+      const showLock = !perms.canAdmin && !kasseOpen;
+      document.getElementById("kasse-locked-banner").classList.toggle("active", showLock);
+      document.getElementById("pos-main-grid").style.display = showLock ? "none" : "grid";
+
+      // Formularfelder synchronisieren
+      if (!document.activeElement?.closest("#company-form")) {
+        const c = settings.company;
+        document.getElementById("comp-name").value = c.name || "";
+        document.getElementById("comp-street").value = c.street || "";
+        document.getElementById("comp-zip").value = c.zipCity || "";
+        document.getElementById("comp-taxid").value = c.taxId || "";
+        document.getElementById("comp-taxmode").value = c.taxMode || "standard";
+        document.getElementById("comp-taxrate").value = String(c.defaultTaxRate || 19);
+        document.getElementById("comp-footer").value = c.footerText || "";
+      }
+
+      if (!document.activeElement?.closest("#hh-form")) {
+        const hh = settings.happyHour;
+        document.getElementById("hh-label").value = hh.label || "Happy Hour";
+        document.getElementById("hh-percent").value = hh.discountPercent || 20;
+        document.getElementById("hh-cat").value = hh.categoryFilter || "Alle";
+      }
+    }
+
+    restoreSession();
+
+    // =========================================================
+    // MULTIPLIKATOR & PRODUKTKARTEN (EXAKT WIE SCREENSHOT 1)
+    // =========================================================
+    function setMultiplier(val) {
+      selectedMultiplier = val;
+      document.querySelectorAll(".mult-btn").forEach((b) => {
+        b.classList.toggle("active", Number(b.dataset.mult) === val);
+      });
+    }
+
+    document.querySelectorAll(".mult-btn").forEach((btn) => {
+      btn.addEventListener("click", () => setMultiplier(Number(btn.dataset.mult)));
+    });
+
+    function renderCategoriesAndProducts() {
+      const container = document.getElementById("categories-container");
+      const preferredOrder = ["Getränke", "Alkoholfrei", "Essen & Snacks"];
+      const existingCats = [...new Set(products.map((p) => p.category || "Sonstiges"))];
+      const orderedCats = [
+        ...preferredOrder.filter((c) => existingCats.includes(c)),
+        ...existingCats.filter((c) => !preferredOrder.includes(c))
+      ];
+
+      container.innerHTML = orderedCats
+        .map((cat) => {
+          const items = products.filter((p) => (p.category || "Sonstiges") === cat);
+          const cardsHtml = items
+            .map((p) => {
+              const mode = p.stockMode || "auto";
+              const inCart = cart[p.id] || 0;
+              const rem = mode === "auto" ? Number(p.stock || 0) - inCart : Number(p.stock || 0);
+              const isOut = mode === "auto" && rem <= 0;
+
+              let hintHtml = "";
+              if (mode === "auto") {
+                if (rem <= 0) hintHtml = `<span class="item-stock-hint empty">Leer</span>`;
+                else if (rem <= 10) hintHtml = `<span class="item-stock-hint low">${rem} Stk.</span>`;
+              }
+
+              return `
+                <div class="item-card ${isOut ? "out-of-stock" : ""}" data-prod-id="${esc(p.id)}">
+                  <div class="item-card-name">${esc(p.name)}</div>
+                  <div class="item-card-bottom tabular">
+                    <span class="item-card-price ${p.price < 0 ? "neg" : ""}">${formatEUR(p.price)}</span>
+                    ${hintHtml}
+                  </div>
+                </div>
+              `;
+            })
+            .join("");
+
+          return `
+            <div class="category-section">
+              <div class="category-title">${esc(cat)}</div>
+              <div class="cards-row">${cardsHtml}</div>
+            </div>
+          `;
+        })
+        .join("");
+
+      container.querySelectorAll(".item-card").forEach((card) => {
+        card.addEventListener("click", () => {
+          if (!currentUser) return;
+          const perms = getCurrentPermissions();
+          if (!perms.canSell || (!perms.canAdmin && settings.kasseOpen === false)) return;
+
+          const id = card.dataset.prodId;
+          const prod = products.find((x) => x.id === id);
+          if (!prod) return;
+
+          let addQty = selectedMultiplier;
+          if ((prod.stockMode || "auto") === "auto") {
+            const maxAdd = Math.max(0, Number(prod.stock || 0) - (cart[id] || 0));
+            if (maxAdd <= 0) return;
+            addQty = Math.min(addQty, maxAdd);
+          }
+
+          cart[id] = (cart[id] || 0) + addQty;
+          setMultiplier(1);
+          renderCategoriesAndProducts();
+          renderCart();
+        });
+      });
+    }
+
+    // =========================================================
+    // WARENKORB, RABATT-MODAL & RÜCKGELDRECHNER
+    // =========================================================
+    document.getElementById("toggle-change-calc").addEventListener("change", (e) => {
+      document.getElementById("change-calc-box").classList.toggle("open", e.target.checked);
+    });
+
+    document.getElementById("btn-open-discount").addEventListener("click", () => {
+      if (!getCurrentPermissions().canDiscount) return;
+      const box = document.getElementById("discount-modal-options");
+      const presetBtns = discounts
+        .map((d) => {
+          const lbl = d.type === "percent" ? `${d.name} (-${d.value}%)` : `${d.name} (-${formatEUR(d.value)})`;
+          return `<button type="button" class="btn-outline" style="text-align:left;" data-pick-disc="${esc(d.id)}">${esc(lbl)}</button>`;
+        })
+        .join("");
+
+      box.innerHTML = `
+        <button type="button" class="btn-outline" style="text-align:left;" data-pick-disc="auto">Automatisch (Happy Hour falls aktiv)</button>
+        <button type="button" class="btn-outline" style="text-align:left;" data-pick-disc="none">Kein Rabatt</button>
+        ${presetBtns}
+      `;
+
+      box.querySelectorAll("[data-pick-disc]").forEach((b) => {
+        b.addEventListener("click", () => {
+          selectedDiscountChoice = b.dataset.pickDisc;
+          document.getElementById("discount-modal").classList.remove("open");
+          renderCart();
+        });
+      });
+
+      document.getElementById("discount-modal").classList.add("open");
+    });
+
+    function calculateTotals() {
+      const entries = Object.entries(cart)
+        .filter(([id, qty]) => qty > 0 && products.some((p) => p.id === id))
+        .map(([id, qty]) => ({ product: products.find((p) => p.id === id), qty }));
+
+      const subtotal = entries.reduce((sum, e) => sum + e.product.price * e.qty, 0);
+      const posSum = entries.reduce((sum, e) => sum + (e.product.price > 0 ? e.product.price * e.qty : 0), 0);
+
+      let discountAmount = 0;
+      let discountName = null;
+      let happyHourApplied = false;
+
+      if (selectedDiscountChoice === "auto") {
+        if (settings.happyHour?.enabled && posSum > 0) {
+          const hh = settings.happyHour;
+          const hhCat = (hh.categoryFilter || "Alle").toLowerCase();
+          const eligible = entries.reduce((s, e) => {
+            if (e.product.price <= 0) return s;
+            if (hhCat === "alle" || (e.product.category || "").toLowerCase() === hhCat) return s + e.product.price * e.qty;
+            return s;
+          }, 0);
+          if (eligible > 0) {
+            discountAmount = Math.round(eligible * (Number(hh.discountPercent) / 100) * 100) / 100;
+            discountName = `${hh.label} (-${hh.discountPercent}%)`;
+            happyHourApplied = true;
+          }
+        }
+      } else if (selectedDiscountChoice !== "none") {
+        const tmpl = discounts.find((d) => d.id === selectedDiscountChoice);
+        if (tmpl && posSum > 0) {
+          discountAmount =
+            tmpl.type === "percent"
+              ? Math.round(posSum * (Number(tmpl.value) / 100) * 100) / 100
+              : Math.min(posSum, Number(tmpl.value));
+          discountName = tmpl.name;
+        }
+      }
+
+      const total = Math.round((subtotal - discountAmount) * 100) / 100;
+      return { entries, subtotal, discountAmount, discountName, happyHourApplied, total };
+    }
+
+    function updateChangeCalc(total) {
+      const inp = document.getElementById("tender-input");
+      const out = document.getElementById("change-val-display");
+      const val = parseFloat(inp.value);
+      if (isNaN(val) || inp.value === "") {
+        out.textContent = "0,00 €";
+        out.style.color = "var(--green-dark)";
+        return;
+      }
+      const diff = val - total;
+      out.textContent = formatEUR(diff);
+      out.style.color = diff < -0.001 ? "var(--red)" : "var(--green-dark)";
+    }
+
+    function renderCart() {
+      const { entries, discountAmount, discountName, total } = calculateTotals();
+      const listEl = document.getElementById("order-list");
+      const payBtn = document.getElementById("btn-pay-book");
+
+      payBtn.disabled = entries.length === 0;
+      payBtn.classList.toggle("ready", entries.length > 0);
+
+      const discRow = document.getElementById("discount-applied-row");
+      discRow.style.display = discountAmount > 0 ? "flex" : "none";
+      document.getElementById("discount-applied-name").textContent = discountName || "Rabatt";
+      document.getElementById("discount-applied-val").textContent = `-${formatEUR(discountAmount)}`;
+
+      document.getElementById("btn-discount-text").textContent =
+        selectedDiscountChoice !== "auto" && selectedDiscountChoice !== "none" && discountName
+          ? `Rabatt: ${discountName}`
+          : "Rabatt auswählen";
+
+      document.getElementById("order-total-display").textContent = formatEUR(total);
+
+      if (entries.length === 0) {
+        listEl.innerHTML = `<div class="order-empty-text">Warenkorb ist leer</div>`;
+        updateChangeCalc(0);
+        return;
+      }
+
+      listEl.innerHTML = entries
+        .map(
+          ({ product: p, qty }) => `
+          <div class="order-line tabular">
+            <div class="order-line-info">
+              <div class="order-line-name">${esc(p.name)}</div>
+              <div class="order-line-unit">${formatEUR(p.price)}</div>
+            </div>
+            <div class="qty-stepper">
+              <button type="button" class="qty-btn" data-step="dec" data-id="${esc(p.id)}">−</button>
+              <span class="qty-num">${qty}</span>
+              <button type="button" class="qty-btn" data-step="inc" data-id="${esc(p.id)}">+</button>
+            </div>
+            <div class="order-line-total">${formatEUR(p.price * qty)}</div>
+          </div>
+        `
+        )
+        .join("");
+
+      listEl.querySelectorAll(".qty-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.id;
+          const prod = products.find((x) => x.id === id);
+          if (btn.dataset.step === "dec") {
+            cart[id] = (cart[id] || 0) - 1;
+            if (cart[id] <= 0) delete cart[id];
+          } else {
+            if ((prod.stockMode || "auto") === "auto" && (cart[id] || 0) >= Number(prod.stock || 0)) return;
+            cart[id] = (cart[id] || 0) + 1;
+          }
+          renderCategoriesAndProducts();
+          renderCart();
+        });
+      });
+
+      updateChangeCalc(total);
+    }
+
+    document.getElementById("tender-input").addEventListener("input", () => {
+      updateChangeCalc(calculateTotals().total);
+    });
+
+    document.querySelectorAll(".cash-pill").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const total = calculateTotals().total;
+        const inp = document.getElementById("tender-input");
+        inp.value = btn.dataset.cash === "exact" ? Math.max(0, total).toFixed(2) : Number(btn.dataset.cash).toFixed(2);
+        updateChangeCalc(total);
+      });
+    });
+
+    document.getElementById("btn-clear-order").addEventListener("click", () => {
+      cart = {};
+      selectedDiscountChoice = "auto";
+      document.getElementById("tender-input").value = "";
+      renderCategoriesAndProducts();
+      renderCart();
+    });
+
+    document.getElementById("btn-last-receipt").addEventListener("click", () => {
+      if (orders.length === 0) {
+        alert("Es wurde noch kein Beleg gebucht.");
+        return;
+      }
+      openReceiptModal(orders[0]);
+    });
+
+    // =========================================================
+    // BEZAHLEN & BUCHEN (FIRESTORE)
+    // =========================================================
+    document.getElementById("btn-pay-book").addEventListener("click", async () => {
+      if (!currentUser) return;
+      const perms = getCurrentPermissions();
+      if (!perms.canSell || (!perms.canAdmin && settings.kasseOpen === false)) return;
+
+      const { entries, subtotal, discountAmount, discountName, happyHourApplied, total } = calculateTotals();
+      if (entries.length === 0) return;
+
+      const btn = document.getElementById("btn-pay-book");
+      btn.disabled = true;
+
+      const now = new Date();
+      const maxNum = orders.reduce((m, o) => {
+        const match = String(o.bonNr || "").match(/(\d+)$/);
+        return match ? Math.max(m, parseInt(match[1], 10)) : m;
+      }, 0);
+      const bonNr = `BON-${String(maxNum + 1).padStart(4, "0")}`;
+
+      const comp = settings.company;
+      const isKU = comp.taxMode === "kleinunternehmer";
+      const taxRate = isKU ? 0 : Number(comp.defaultTaxRate || 19);
+      const netTotal = isKU ? total : Math.round((total / (1 + taxRate / 100)) * 100) / 100;
+      const taxTotal = Math.round((total - netTotal) * 100) / 100;
+
+      const tenderVal = parseFloat(document.getElementById("tender-input").value);
+      const given = !isNaN(tenderVal) && document.getElementById("tender-input").value !== "" ? tenderVal : total;
+      const change = Math.round((given - total) * 100) / 100;
+
+      const orderData = {
+        bonNr,
+        cashierId: currentUser.id,
+        timestampMs: now.getTime(),
+        dateStr: now.toLocaleDateString("de-DE"),
+        timeStr: now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        items: entries.map(({ product: p, qty }) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          price: p.price,
+          qty,
+          stockMode: p.stockMode || "auto"
+        })),
+        subtotal,
+        discountName,
+        discountAmount,
+        happyHourApplied,
+        total,
+        netTotal,
+        taxTotal,
+        taxRate,
+        isKleinunternehmer: isKU,
+        companySnapshot: { ...comp },
+        given,
+        change,
+        storniert: false
+      };
+
+      try {
+        const batch = writeBatch(db);
+        batch.set(doc(ordersCol), orderData);
+        entries.forEach(({ product: p, qty }) => {
+          if ((p.stockMode || "auto") === "auto") {
+            batch.update(doc(productsCol, p.id), { stock: increment(-qty) });
+          }
+        });
+        await batch.commit();
+
+        cart = {};
+        selectedDiscountChoice = "auto";
+        document.getElementById("tender-input").value = "";
+        renderCategoriesAndProducts();
+        renderCart();
+        openReceiptModal(orderData);
+      } catch (err) {
+        alert("Fehler beim Speichern: " + err.message);
+        btn.disabled = false;
+      }
+    });
+
+    function openReceiptModal(order) {
+      const comp = order.companySnapshot || settings.company;
+      document.getElementById("rec-comp-name").textContent = comp.name || "Abi-Kassensystem";
+      document.getElementById("rec-comp-addr").textContent =
+        `${comp.street || ""}, ${comp.zipCity || ""}` + (comp.taxId ? ` · St.-Nr.: ${comp.taxId}` : "");
+      document.getElementById("rec-meta").textContent =
+        `${order.bonNr} · ${order.dateStr}, ${order.timeStr} · Bediener: ${order.cashierId || "–"}` +
+        (order.storniert ? " [STORNIERT]" : "");
+
+      const itemsHtml = (order.items || [])
+        .map(
+          (i) => `
+          <div class="receipt-row">
+            <span>${i.qty}× ${esc(i.name)}</span>
+            <span>${formatEUR(i.price * i.qty)}</span>
+          </div>`
+        )
+        .join("");
+
+      const discHtml =
+        order.discountAmount > 0
+          ? `<div class="receipt-row" style="color:var(--purple-dark);">
+               <span>Rabatt (${esc(order.discountName || "")})</span>
+               <span>-${formatEUR(order.discountAmount)}</span>
+             </div>`
+          : "";
+
+      const taxHtml = order.isKleinunternehmer
+        ? `<div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.</div>`
+        : `<div class="receipt-row" style="font-size:12px; color:var(--text-muted);">
+             <span>Darin enthaltene USt. (${order.taxRate}%)</span>
+             <span>${formatEUR(order.taxTotal)}</span>
+           </div>
+           <div class="receipt-row" style="font-size:12px; color:var(--text-muted);">
+             <span>Nettobetrag</span>
+             <span>${formatEUR(order.netTotal)}</span>
+           </div>`;
+
+      document.getElementById("rec-body").innerHTML = `
+        ${itemsHtml}
+        ${discHtml}
+        <div class="receipt-sep"></div>
+        <div class="receipt-row" style="font-weight:700; font-size:15px;">
+          <span>Gesamt (Brutto)</span>
+          <span>${formatEUR(order.total)}</span>
+        </div>
+        ${taxHtml}
+        <div class="receipt-sep"></div>
+        <div class="receipt-row" style="font-size:12px; color:var(--text-muted);">
+          <span>Gegeben / Rückgeld</span>
+          <span>${formatEUR(order.given)} / ${formatEUR(order.change)}</span>
+        </div>
+        ${comp.footerText ? `<div style="text-align:center; font-size:11.5px; color:var(--text-muted); margin-top:8px;">${esc(comp.footerText)}</div>` : ""}
+      `;
+
+      const qrBox = document.getElementById("qrcode-box");
+      qrBox.innerHTML = "";
+      if (typeof QRCode !== "undefined") {
+        new QRCode(qrBox, {
+          text: `${order.bonNr} | ${comp.name} | ${order.dateStr} ${order.timeStr} | ${Number(order.total).toFixed(2)} EUR`,
+          width: 140,
+          height: 140,
+          colorDark: "#111827",
+          colorLight: "#FFFFFF"
+        });
+      }
+
+      document.getElementById("receipt-modal").classList.add("open");
+    }
+
+    // =========================================================
+    // MANUELLE LAGERENTNAHME (ÖFTER RÜCKGÄNGIG, NUR LETZTE ENTNAHME)
+    // =========================================================
+    function renderManualLagerDropdown() {
+      const sel = document.getElementById("ml-product");
+      const cur = sel.value;
+      const tracked = products.filter((p) => (p.stockMode || "auto") !== "unlimited");
+      sel.innerHTML =
+        tracked.length === 0
+          ? `<option value="">Keine Lagerprodukte vorhanden</option>`
+          : tracked
+              .map((p) => `<option value="${esc(p.id)}">${esc(p.name)} (Bestand: ${Number(p.stock || 0)} Stk.)</option>`)
+              .join("");
+      if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    }
+
+    document.getElementById("btn-open-manual-lager").addEventListener("click", () => {
+      renderManualLagerDropdown();
+      renderManualLagerHistory();
+      document.getElementById("manual-lager-modal").classList.add("open");
+    });
+
+    document.getElementById("manual-lager-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+      const prodId = document.getElementById("ml-product").value;
+      const rawVal = parseInt(document.getElementById("ml-amount").value, 10);
+      const prod = products.find((p) => p.id === prodId);
+
+      if (!prod || isNaN(rawVal) || rawVal === 0) {
+        alert("Bitte ein Produkt auswählen und eine gültige Minus-Zahl eingeben.");
+        return;
+      }
+
+      const delta = -Math.abs(rawVal);
+      const now = new Date();
+      const batch = writeBatch(db);
+      batch.update(doc(productsCol, prod.id), { stock: increment(delta) });
+      batch.set(doc(lagerLogsCol), {
+        productId: prod.id,
+        productName: prod.name,
+        delta,
+        byUser: currentUser.id,
+        timestampMs: now.getTime(),
+        timeStr: now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        undone: false
+      });
+      await batch.commit();
+      document.getElementById("ml-amount").value = "";
+    });
+
+    function renderManualLagerHistory() {
+      const box = document.getElementById("ml-history-list");
+      if (!box || !currentUser) return;
+
+      const myDeductions = lagerLogs.filter((l) => l.byUser === currentUser.id && l.delta < 0);
+      if (myDeductions.length === 0) {
+        box.innerHTML = `<p style="font-size:13px; color:var(--text-muted);">Noch keine Entnahmen gebucht.</p>`;
+        return;
+      }
+
+      // Öfter rückgängig möglich, aber IMMER nur die allerletzte Entnahme (Index 0, sofern noch nicht rückgängig)
+      box.innerHTML = myDeductions
+        .slice(0, 12)
+        .map((log, idx) => {
+          const isLastActive = idx === 0 && !log.undone;
+          return `
+            <div class="log-row tabular ${log.undone ? "undone" : ""}">
+              <div>
+                <strong>${esc(log.productName)}</strong> · ${log.delta} Stk.
+                <div style="font-size:11.5px; color:var(--text-muted);">${esc(log.timeStr)} Uhr</div>
+              </div>
+              ${
+                log.undone
+                  ? `<span style="font-size:11.5px; color:var(--text-muted);">Zurückgebucht</span>`
+                  : isLastActive
+                  ? `<button type="button" class="sm-btn" data-ml-undo="${esc(log.id)}">Rückgängig</button>`
+                  : `<span style="font-size:11.5px; color:var(--text-muted);">Gebucht</span>`
+              }
+            </div>
+          `;
+        })
+        .join("");
+
+      box.querySelectorAll("[data-ml-undo]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const currentMine = lagerLogs.filter((l) => l.byUser === currentUser.id && l.delta < 0);
+          const veryLast = currentMine[0];
+          if (!veryLast || veryLast.id !== btn.dataset.mlUndo || veryLast.undone) return;
+
+          const prod = products.find((p) => p.id === veryLast.productId);
+          const batch = writeBatch(db);
+          batch.update(doc(lagerLogsCol, veryLast.id), { undone: true });
+          if (prod) batch.update(doc(productsCol, prod.id), { stock: increment(-veryLast.delta) });
+          await batch.commit();
+        });
+      });
+    }
+
+    // Modal schließen
+    document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.getElementById(btn.dataset.closeModal).classList.remove("open");
+      });
+    });
+
+    // =========================================================
+    // ADMIN: STATUS-SCHALTER & KACHEL-NAVIGATION
+    // =========================================================
+    document.getElementById("admin-kasse-switch").addEventListener("change", async (e) => {
+      await setDoc(configDocRef, { kasseOpen: e.target.checked }, { merge: true });
+    });
+
+    document.getElementById("admin-hh-switch").addEventListener("change", async (e) => {
+      await setDoc(configDocRef, { happyHour: { ...settings.happyHour, enabled: e.target.checked } }, { merge: true });
+    });
+
+    document.querySelectorAll("[data-subpage]").forEach((tile) => {
+      tile.addEventListener("click", () => {
+        document.getElementById("admin-tiles-home").style.display = "none";
+        document.querySelectorAll(".admin-subpage").forEach((s) => s.classList.remove("active"));
+        document.getElementById(tile.dataset.subpage).classList.add("active");
+      });
+    });
+
+    document.querySelectorAll("[data-back-tiles]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".admin-subpage").forEach((s) => s.classList.remove("active"));
+        document.getElementById("admin-tiles-home").style.display = "block";
+      });
+    });
+
+    // =========================================================
+    // ADMIN: PRODUKTE & PREISE
+    // =========================================================
+    document.getElementById("product-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById("edit-prod-id").value;
+      const name = document.getElementById("prod-name").value.trim();
+      const price = parseFloat(document.getElementById("prod-price").value);
+      const category = document.getElementById("prod-cat").value.trim();
+      const stockMode = document.getElementById("prod-mode").value;
+      const stock = stockMode === "unlimited" ? 0 : parseInt(document.getElementById("prod-stock").value || "0", 10);
+
+      if (!name || isNaN(price) || !category) return;
+      const payload = { name, price, category, stockMode, stock };
+      if (editId) await updateDoc(doc(productsCol, editId), payload);
+      else await setDoc(doc(productsCol), payload);
+
+      resetProductForm();
+    });
+
+    function resetProductForm() {
+      document.getElementById("product-form").reset();
+      document.getElementById("edit-prod-id").value = "";
+      document.getElementById("prod-stock").value = "50";
+      document.getElementById("prod-form-heading").textContent = "Neues Produkt anlegen";
+      document.getElementById("btn-save-prod").textContent = "Speichern";
+      document.getElementById("btn-cancel-prod").style.display = "none";
+    }
+
+    document.getElementById("btn-cancel-prod").addEventListener("click", resetProductForm);
+
+    function renderAdminProducts() {
+      const modeMap = { auto: "Automatisch", manual: "Manuell", unlimited: "Unbegrenzt" };
+      document.getElementById("admin-products-tbody").innerHTML = products
+        .map(
+          (p) => `
+          <tr>
+            <td><strong>${esc(p.name)}</strong></td>
+            <td>${esc(p.category)}</td>
+            <td>${formatEUR(p.price)}</td>
+            <td><span class="tag tag-blue">${modeMap[p.stockMode || "auto"]}</span></td>
+            <td>${(p.stockMode || "auto") === "unlimited" ? "∞" : `${Number(p.stock || 0)} Stk.`}</td>
+            <td style="display:flex; gap:6px;">
+              <button type="button" class="sm-btn" data-edit-p="${esc(p.id)}">Bearbeiten</button>
+              <button type="button" class="sm-btn danger" data-del-p="${esc(p.id)}">Löschen</button>
+            </td>
+          </tr>`
+        )
+        .join("");
+
+      document.querySelectorAll("[data-edit-p]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const p = products.find((x) => x.id === btn.dataset.editP);
+          if (!p) return;
+          document.getElementById("edit-prod-id").value = p.id;
+          document.getElementById("prod-name").value = p.name;
+          document.getElementById("prod-price").value = p.price;
+          document.getElementById("prod-cat").value = p.category;
+          document.getElementById("prod-mode").value = p.stockMode || "auto";
+          document.getElementById("prod-stock").value = p.stock ?? 0;
+          document.getElementById("prod-form-heading").textContent = `Produkt bearbeiten: ${p.name}`;
+          document.getElementById("btn-save-prod").textContent = "Aktualisieren";
+          document.getElementById("btn-cancel-prod").style.display = "inline-block";
+        });
+      });
+
+      document.querySelectorAll("[data-del-p]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Produkt wirklich löschen?")) return;
+          await deleteDoc(doc(productsCol, btn.dataset.delP));
+        });
+      });
+    }
+
+    // =========================================================
+    // ADMIN: LAGERBESTAND (VOLLZUGRIFF)
+    // =========================================================
+    function renderAdminLager() {
+      const tracked = products.filter((p) => (p.stockMode || "auto") !== "unlimited");
+      document.getElementById("admin-lager-list").innerHTML =
+        tracked.length === 0
+          ? `<p style="color:var(--text-muted); font-size:13.5px;">Keine Lagerprodukte vorhanden.</p>`
+          : tracked
+              .map(
+                (p) => `
+                <div class="log-row tabular">
+                  <div>
+                    <strong>${esc(p.name)}</strong>
+                    <div style="font-size:12px; color:var(--text-muted);">${esc(p.category)} · Bestand: <strong>${Number(p.stock || 0)} Stk.</strong></div>
+                  </div>
+                  <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <button type="button" class="sm-btn" data-l-id="${esc(p.id)}" data-l-d="-1">-1</button>
+                    <button type="button" class="sm-btn" data-l-id="${esc(p.id)}" data-l-d="-6">-6</button>
+                    <button type="button" class="sm-btn" data-l-id="${esc(p.id)}" data-l-d="-24">-24</button>
+                    <button type="button" class="sm-btn" style="background:#DCFCE7; color:#15803D;" data-l-id="${esc(p.id)}" data-l-d="24">+24</button>
+                  </div>
+                </div>`
+              )
+              .join("");
+
+      document.querySelectorAll("[data-l-id]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const prod = products.find((x) => x.id === btn.dataset.lId);
+          const delta = parseInt(btn.dataset.lD, 10);
+          if (!prod || isNaN(delta)) return;
+          const now = new Date();
+          const batch = writeBatch(db);
+          batch.update(doc(productsCol, prod.id), { stock: increment(delta) });
+          batch.set(doc(lagerLogsCol), {
+            productId: prod.id,
+            productName: prod.name,
+            delta,
+            byUser: currentUser ? currentUser.id : "admin",
+            timestampMs: now.getTime(),
+            timeStr: now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+            undone: false
+          });
+          await batch.commit();
+        });
+      });
+    }
+
+    function renderAdminLagerLogs() {
+      document.getElementById("admin-lager-logs").innerHTML =
+        lagerLogs.length === 0
+          ? `<p style="color:var(--text-muted); font-size:13.5px;">Noch keine Lagerbewegungen.</p>`
+          : lagerLogs
+              .map(
+                (l) => `
+                <div class="log-row tabular ${l.undone ? "undone" : ""}">
+                  <div>
+                    <strong>${esc(l.productName)}</strong> · ${l.delta > 0 ? `+${l.delta}` : l.delta} Stk.
+                    <div style="font-size:11.5px; color:var(--text-muted);">${esc(l.timeStr)} · ID: ${esc(l.byUser || "admin")}</div>
+                  </div>
+                  ${
+                    !l.undone
+                      ? `<button type="button" class="sm-btn" data-admin-undo="${esc(l.id)}">Rückgängig</button>`
+                      : `<span style="font-size:11.5px; color:var(--text-muted);">Zurückgebucht</span>`
+                  }
+                </div>`
+              )
+              .join("");
+
+      document.querySelectorAll("[data-admin-undo]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const log = lagerLogs.find((x) => x.id === btn.dataset.adminUndo);
+          if (!log || log.undone) return;
+          const prod = products.find((p) => p.id === log.productId);
+          const batch = writeBatch(db);
+          batch.update(doc(lagerLogsCol, log.id), { undone: true });
+          if (prod) batch.update(doc(productsCol, prod.id), { stock: increment(-log.delta) });
+          await batch.commit();
+        });
+      });
+    }
+
+    // =========================================================
+    // ADMIN: ROLLEN & RECHTE (EXTRA TAB)
+    // =========================================================
+    document.getElementById("add-role-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("new-role-name").value.trim();
+      if (!name) return;
+
+      const id = "role_" + name.toLowerCase().replace(/[^a-z0-9]/g, "_") + "_" + Date.now().toString(36);
+      const newRole = {
+        id,
+        name,
+        system: false,
+        permissions: {
+          canSell: document.getElementById("nr-canSell").checked,
+          canDiscount: document.getElementById("nr-canDiscount").checked,
+          canLagerMinus: document.getElementById("nr-canLagerMinus").checked,
+          canLagerPlus: document.getElementById("nr-canLagerPlus").checked,
+          canStorno: document.getElementById("nr-canStorno").checked,
+          canAdmin: document.getElementById("nr-canAdmin").checked
+        }
+      };
+
+      await setDoc(configDocRef, { roles: [...settings.roles, newRole] }, { merge: true });
+      e.target.reset();
+      document.getElementById("nr-canSell").checked = true;
+      document.getElementById("nr-canDiscount").checked = true;
+      document.getElementById("nr-canLagerMinus").checked = true;
+    });
+
+    function renderRolesEditor() {
+      const roleSelect = document.getElementById("new-acc-role");
+      const prev = roleSelect.value;
+      roleSelect.innerHTML = settings.roles.map((r) => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join("");
+      if ([...roleSelect.options].some((o) => o.value === prev)) roleSelect.value = prev;
+      else if (settings.roles.some((r) => r.id === "kellner")) roleSelect.value = "kellner";
+
+      const list = document.getElementById("roles-editor-list");
+      list.innerHTML = settings.roles
+        .map((r, idx) => {
+          const isAdmin = r.id === "admin";
+          const p = r.permissions || {};
+          return `
+            <div style="background:#F9FAFB; border:1px solid var(--border); border-radius:12px; padding:15px; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+                <div>
+                  <strong style="font-size:15.5px;">${esc(r.name)}</strong>
+                  ${isAdmin ? `<span class="tag tag-blue" style="margin-left:6px;">System-Admin</span>` : ""}
+                </div>
+                <div style="display:flex; gap:8px;">
+                  ${
+                    !isAdmin
+                      ? `<button type="button" class="btn-primary-blue" style="padding:6px 12px; font-size:12.5px;" data-save-role="${idx}">Rechte speichern</button>
+                         <button type="button" class="sm-btn danger" data-del-role="${idx}">Löschen</button>`
+                      : ""
+                  }
+                </div>
+              </div>
+
+              <div class="perm-checks-grid" style="margin-bottom:0;">
+                <label class="perm-item"><input type="checkbox" id="re-${idx}-canSell" ${isAdmin || p.canSell ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Kasse bedienen</label>
+                <label class="perm-item"><input type="checkbox" id="re-${idx}-canDiscount" ${isAdmin || p.canDiscount ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Rabatte auswählen</label>
+                <label class="perm-item"><input type="checkbox" id="re-${idx}-canLagerMinus" ${isAdmin || p.canLagerMinus ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Manuelle Lagerentnahme (−)</label>
+                <label class="perm-item"><input type="checkbox" id="re-${idx}-canLagerPlus" ${isAdmin || p.canLagerPlus ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Lager-Nachschub (+)</label>
+                <label class="perm-item"><input type="checkbox" id="re-${idx}-canStorno" ${isAdmin || p.canStorno ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Belege stornieren</label>
+                <label class="perm-item"><input type="checkbox" id="re-${idx}-canAdmin" ${isAdmin || p.canAdmin ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Adminbereich verwalten</label>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+      list.querySelectorAll("[data-save-role]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const idx = parseInt(btn.dataset.saveRole, 10);
+          const updated = settings.roles.map((r, i) => {
+            if (i !== idx || r.id === "admin") return r;
+            return {
+              ...r,
+              permissions: {
+                canSell: document.getElementById(`re-${idx}-canSell`).checked,
+                canDiscount: document.getElementById(`re-${idx}-canDiscount`).checked,
+                canLagerMinus: document.getElementById(`re-${idx}-canLagerMinus`).checked,
+                canLagerPlus: document.getElementById(`re-${idx}-canLagerPlus`).checked,
+                canStorno: document.getElementById(`re-${idx}-canStorno`).checked,
+                canAdmin: document.getElementById(`re-${idx}-canAdmin`).checked
+              }
+            };
+          });
+          await setDoc(configDocRef, { roles: updated }, { merge: true });
+          alert(`Berechtigungen für "${updated[idx].name}" gespeichert.`);
+        });
+      });
+
+      list.querySelectorAll("[data-del-role]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const idx = parseInt(btn.dataset.delRole, 10);
+          const target = settings.roles[idx];
+          if (!target || target.id === "admin") return;
+          if (settings.accounts.some((a) => (a.roleId || a.role) === target.id)) {
+            alert("Diese Rolle wird noch von einem Account verwendet.");
+            return;
+          }
+          if (!confirm(`Rolle "${target.name}" wirklich löschen?`)) return;
+          await setDoc(configDocRef, { roles: settings.roles.filter((_, i) => i !== idx) }, { merge: true });
+        });
+      });
+    }
+
+    // =========================================================
+    // ADMIN: PERSONAL & LOGINS
+    // =========================================================
+    document.getElementById("add-account-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("new-acc-id").value.trim().toLowerCase();
+      const pass = document.getElementById("new-acc-pass").value.trim();
+      const roleId = document.getElementById("new-acc-role").value;
+
+      if (!id || !pass || !roleId) return;
+      if (settings.accounts.some((a) => a.id.toLowerCase() === id)) {
+        alert(`Der Benutzername "${id}" existiert bereits.`);
+        return;
+      }
+
+      await setDoc(
+        configDocRef,
+        { accounts: [...settings.accounts, { id, pass, roleId, active: true }] },
+        { merge: true }
+      );
+      e.target.reset();
+    });
+
+    function renderAccountsTable() {
+      document.getElementById("accounts-tbody").innerHTML = settings.accounts
+        .map((acc, idx) => {
+          const isMain = acc.id.toLowerCase() === "admin";
+          const curRole = acc.roleId || acc.role || "kellner";
+          const roleOpts = settings.roles
+            .map((r) => `<option value="${esc(r.id)}" ${r.id === curRole ? "selected" : ""}>${esc(r.name)}</option>`)
+            .join("");
+
+          return `
+            <tr>
+              <td><strong>${esc(acc.id)}</strong></td>
+              <td>
+                ${
+                  isMain
+                    ? `<span class="tag tag-blue">Admin</span>`
+                    : `<select id="acc-role-sel-${idx}" style="padding:5px 8px; border-radius:7px; border:1px solid var(--border);">${roleOpts}</select>`
+                }
+              </td>
+              <td>
+                <input type="text" id="acc-pass-inp-${idx}" value="${esc(acc.pass)}" style="padding:5px 8px; border-radius:7px; border:1px solid var(--border); width:115px;" />
+              </td>
+              <td>
+                ${
+                  isMain
+                    ? `<span class="tag tag-green">Aktiv</span>`
+                    : `<select id="acc-act-sel-${idx}" style="padding:5px 8px; border-radius:7px; border:1px solid var(--border);">
+                         <option value="true" ${acc.active !== false ? "selected" : ""}>Aktiv</option>
+                         <option value="false" ${acc.active === false ? "selected" : ""}>Gesperrt</option>
+                       </select>`
+                }
+              </td>
+              <td style="display:flex; gap:6px;">
+                <button type="button" class="sm-btn" data-save-a="${idx}">Speichern</button>
+                ${!isMain ? `<button type="button" class="sm-btn danger" data-del-a="${idx}">Löschen</button>` : ""}
+              </td>
+            </tr>`;
+        })
+        .join("");
+
+      document.querySelectorAll("[data-save-a]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const idx = parseInt(btn.dataset.saveA, 10);
+          const newPass = document.getElementById(`acc-pass-inp-${idx}`).value.trim();
+          if (!newPass) return;
+
+          const updated = settings.accounts.map((a, i) => {
+            if (i !== idx) return a;
+            if (a.id.toLowerCase() === "admin") return { ...a, pass: newPass, roleId: "admin", active: true };
+            return {
+              ...a,
+              pass: newPass,
+              roleId: document.getElementById(`acc-role-sel-${idx}`).value,
+              active: document.getElementById(`acc-act-sel-${idx}`).value === "true"
+            };
+          });
+          await setDoc(configDocRef, { accounts: updated }, { merge: true });
+          alert(`Account "${updated[idx].id}" gespeichert.`);
+        });
+      });
+
+      document.querySelectorAll("[data-del-a]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const idx = parseInt(btn.dataset.delA, 10);
+          const target = settings.accounts[idx];
+          if (!target || target.id.toLowerCase() === "admin") return;
+          if (!confirm(`Account "${target.id}" wirklich löschen?`)) return;
+          await setDoc(configDocRef, { accounts: settings.accounts.filter((_, i) => i !== idx) }, { merge: true });
+        });
+      });
+    }
+
+    // =========================================================
+    // ADMIN: HAPPY HOUR, RABATTE, FIRMA, KASSENBUCH & EXCEL
+    // =========================================================
+    document.getElementById("hh-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await setDoc(
+        configDocRef,
+        {
+          happyHour: {
+            ...settings.happyHour,
+            label: document.getElementById("hh-label").value.trim() || "Happy Hour",
+            discountPercent: parseFloat(document.getElementById("hh-percent").value) || 20,
+            categoryFilter: document.getElementById("hh-cat").value.trim() || "Alle"
+          }
+        },
+        { merge: true }
+      );
+      alert("Happy Hour gespeichert.");
+    });
+
+    document.getElementById("discount-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("disc-name").value.trim();
+      const type = document.getElementById("disc-type").value;
+      const value = parseFloat(document.getElementById("disc-value").value);
+      if (!name || isNaN(value)) return;
+      await setDoc(doc(discountsCol), { name, type, value });
+      e.target.reset();
+    });
+
+    function renderAdminDiscounts() {
+      document.getElementById("discounts-tbody").innerHTML = discounts
+        .map(
+          (d) => `
+          <tr>
+            <td><strong>${esc(d.name)}</strong></td>
+            <td>${d.type === "percent" ? "Prozent (%)" : "Festbetrag (€)"}</td>
+            <td>${d.type === "percent" ? `${d.value} %` : formatEUR(d.value)}</td>
+            <td><button type="button" class="sm-btn danger" data-del-d="${esc(d.id)}">Löschen</button></td>
+          </tr>`
+        )
+        .join("");
+
+      document.querySelectorAll("[data-del-d]").forEach((btn) => {
+        btn.addEventListener("click", async () => deleteDoc(doc(discountsCol, btn.dataset.delD)));
+      });
+    }
+
+    document.getElementById("company-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await setDoc(
+        configDocRef,
+        {
+          company: {
+            name: document.getElementById("comp-name").value.trim(),
+            street: document.getElementById("comp-street").value.trim(),
+            zipCity: document.getElementById("comp-zip").value.trim(),
+            taxId: document.getElementById("comp-taxid").value.trim(),
+            taxMode: document.getElementById("comp-taxmode").value,
+            defaultTaxRate: parseInt(document.getElementById("comp-taxrate").value, 10),
+            footerText: document.getElementById("comp-footer").value.trim()
+          }
+        },
+        { merge: true }
+      );
+      alert("Firmendaten gespeichert.");
+    });
+
+    function renderJournalAndStats() {
+      const valid = orders.filter((o) => !o.storniert);
+      const brutto = valid.reduce((s, o) => s + Number(o.total || 0), 0);
+      document.getElementById("admin-live-revenue").textContent =
+        brutto.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(",", ".") + " €";
+
+      document.getElementById("journal-tbody").innerHTML =
+        orders.length === 0
+          ? `<tr><td colspan="7" style="color:var(--text-muted);">Noch keine Buchungen vorhanden.</td></tr>`
+          : orders
+              .map((o) => {
+                const posStr = (o.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ");
+                return `
+                  <tr style="${o.storniert ? "opacity:0.5;" : ""}">
+                    <td><strong>${esc(o.bonNr)}</strong></td>
+                    <td>${esc(o.timeStr)}</td>
+                    <td>${esc(o.cashierId || "–")}</td>
+                    <td>${esc(posStr)}</td>
+                    <td><strong>${formatEUR(o.total)}</strong></td>
+                    <td>${o.storniert ? `<span class="tag tag-red">Storniert</span>` : `<span class="tag tag-green">Bezahlt</span>`}</td>
+                    <td style="display:flex; gap:6px;">
+                      <button type="button" class="sm-btn" data-show-bon="${esc(o.id)}">Beleg</button>
+                      ${!o.storniert ? `<button type="button" class="sm-btn danger" data-storno-b="${esc(o.id)}">Storno</button>` : ""}
+                    </td>
+                  </tr>`;
+              })
+              .join("");
+
+      document.querySelectorAll("[data-show-bon]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const ord = orders.find((x) => x.id === btn.dataset.showBon);
+          if (ord) openReceiptModal(ord);
+        });
+      });
+
+      document.querySelectorAll("[data-storno-b]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const ord = orders.find((x) => x.id === btn.dataset.stornoB);
+          if (!ord || ord.storniert || !confirm(`Beleg ${ord.bonNr} stornieren?`)) return;
+          const batch = writeBatch(db);
+          batch.update(doc(ordersCol, ord.id), { storniert: true });
+          (ord.items || []).forEach((item) => {
+            const p = products.find((x) => x.id === item.id);
+            if (p && (p.stockMode || "auto") === "auto") {
+              batch.update(doc(productsCol, item.id), { stock: increment(item.qty) });
+            }
+          });
+          await batch.commit();
+        });
+      });
+
+      const map = {};
+      valid.forEach((o) => {
+        (o.items || []).forEach((i) => {
+          if (!map[i.name]) map[i.name] = { name: i.name, category: i.category || "–", qty: 0, rev: 0 };
+          map[i.name].qty += i.qty;
+          map[i.name].rev += i.price * i.qty;
+        });
+      });
+      const list = Object.values(map).sort((a, b) => b.rev - a.rev);
+      document.getElementById("stats-tbody").innerHTML =
+        list.length === 0
+          ? `<tr><td colspan="4" style="color:var(--text-muted);">Noch keine Verkäufe vorhanden.</td></tr>`
+          : list
+              .map(
+                (s) => `
+                <tr>
+                  <td><strong>${esc(s.name)}</strong></td>
+                  <td>${esc(s.category)}</td>
+                  <td>${s.qty} Stk.</td>
+                  <td><strong>${formatEUR(s.rev)}</strong></td>
+                </tr>`
+              )
+              .join("");
+    }
+
+    document.getElementById("btn-export-xlsx").addEventListener("click", () => {
+      if (typeof XLSX === "undefined") return;
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(
+          orders.map((o) => ({
+            "Beleg-Nr.": o.bonNr,
+            Datum: o.dateStr,
+            Uhrzeit: o.timeStr,
+            Bediener: o.cashierId || "",
+            Positionen: (o.items || []).map((i) => `${i.qty}x ${i.name}`).join("; "),
+            "Netto (€)": Number(o.netTotal ?? o.total ?? 0),
+            "USt. (€)": Number(o.taxTotal || 0),
+            "Brutto (€)": Number(o.total || 0),
+            Status: o.storniert ? "Storniert" : "Bezahlt"
+          }))
+        ),
+        "Kassenbuch"
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(
+          products.map((p) => ({
+            Produkt: p.name,
+            Kategorie: p.category,
+            "Preis (€)": Number(p.price),
+            Bestand: (p.stockMode || "auto") === "unlimited" ? "Unbegrenzt" : Number(p.stock || 0)
+          }))
+        ),
+        "Lagerbestand"
+      );
+      XLSX.writeFile(wb, `Abi_Kassenbuch_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    });
+
+    document.getElementById("btn-export-json").addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify({ settings, products, discounts, orders, lagerLogs }, null, 2)], {
+        type: "application/json"
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `Abi_Kasse_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    });
+  </script>
+</body>
+</html>
