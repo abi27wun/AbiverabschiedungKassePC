@@ -27,7 +27,6 @@
       --purple: #D8B4FE;
       --purple-dark: #9333EA;
       --sky: #BAE6FD;
-      --sky-text: #0369A1;
       --red: #EF4444;
       --red-dark: #DC2626;
       --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.04);
@@ -161,7 +160,7 @@
     }
 
     /* =========================================================
-       TOP HEADER BAR (EXAKT WIE SCREENSHOT)
+       TOP HEADER BAR
        ========================================================= */
     .topbar {
       background: var(--card);
@@ -283,7 +282,7 @@
     }
 
     /* =========================================================
-       KASSE VIEW (EXAKT WIE SCREENSHOT 1)
+       KASSE VIEW
        ========================================================= */
     .kasse-locked-banner {
       display: none;
@@ -314,7 +313,6 @@
       }
     }
 
-    /* Top Multiplier + Manuelle Lagerentnahme Bar */
     .pos-action-bar {
       background: var(--card);
       border-radius: 14px;
@@ -374,7 +372,6 @@
       background: var(--orange-dark);
     }
 
-    /* Category Sections & Product Cards */
     .category-section {
       margin-bottom: 22px;
     }
@@ -458,7 +455,7 @@
       color: var(--red-dark);
     }
 
-    /* Right Order Panel ("Aktuelle Bestellung") */
+    /* Right Order Panel */
     .order-card {
       background: var(--card);
       border-radius: 16px;
@@ -557,6 +554,16 @@
       text-align: right;
     }
 
+    .hh-applied-row {
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green-dark);
+      padding-top: 10px;
+    }
+
     .discount-applied-row {
       display: none;
       justify-content: space-between;
@@ -564,7 +571,7 @@
       font-size: 13px;
       font-weight: 600;
       color: var(--purple-dark);
-      padding-top: 10px;
+      padding-top: 8px;
     }
 
     .order-total-row {
@@ -611,7 +618,6 @@
       cursor: not-allowed;
     }
 
-    /* iOS Switch & Rückgeldrechner */
     .change-toggle-row {
       display: flex;
       align-items: center;
@@ -769,7 +775,7 @@
     }
 
     /* =========================================================
-       ADMIN VIEW (EXAKT WIE SCREENSHOT 2 + ROLLEN-TAB)
+       ADMIN VIEW
        ========================================================= */
     .admin-status-row {
       display: grid;
@@ -839,7 +845,6 @@
       color: var(--green);
     }
 
-    /* Admin Tiles Grid (7 per row on wide screens like screenshot 2) */
     .admin-tiles-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
@@ -890,7 +895,6 @@
       color: var(--text);
     }
 
-    /* Admin Subpages */
     .admin-subpage {
       display: none;
     }
@@ -1063,7 +1067,7 @@
     .tag-blue { background: #DBEAFE; color: #1D4ED8; }
 
     /* =========================================================
-       MODALS (MANUELLE LAGERENTNAHME, RABATT, BELEG)
+       MODALS
        ========================================================= */
     .modal-overlay {
       position: fixed;
@@ -1198,7 +1202,7 @@
   </div>
 
   <!-- =========================================================
-       TOP HEADER BAR (EXAKT WIE SCREENSHOT)
+       TOP HEADER BAR
        ========================================================= -->
   <header class="topbar">
     <div class="topbar-left">
@@ -1223,7 +1227,7 @@
 
   <main class="main-wrap">
     <!-- =========================================================
-         VIEW 1: KASSE (EXAKT WIE SCREENSHOT 1)
+         VIEW 1: KASSE
          ========================================================= -->
     <section id="view-kasse" class="view-section active">
       <div class="kasse-locked-banner" id="kasse-locked-banner">
@@ -1264,6 +1268,13 @@
             <div class="order-empty-text">Warenkorb ist leer</div>
           </div>
 
+          <!-- Happy Hour wird automatisch angezeigt, falls aktiv -->
+          <div class="hh-applied-row tabular" id="hh-applied-row">
+            <span id="hh-applied-name">⚡ Happy Hour</span>
+            <span id="hh-applied-val">-0,00 €</span>
+          </div>
+
+          <!-- Zusätzlicher Rabatt -->
           <div class="discount-applied-row tabular" id="discount-applied-row">
             <span id="discount-applied-name">Rabatt</span>
             <span id="discount-applied-val">-0,00 €</span>
@@ -1318,7 +1329,7 @@
     </section>
 
     <!-- =========================================================
-         VIEW 2: ADMIN (EXAKT WIE SCREENSHOT 2 + EXTRA TAB ROLLEN)
+         VIEW 2: ADMIN
          ========================================================= -->
     <section id="view-admin" class="view-section">
       <!-- Obere 4 Status-Karten -->
@@ -1355,7 +1366,7 @@
         <div class="status-kpi-card">
           <div class="status-kpi-label">Cloud-Synchronisation</div>
           <div class="status-kpi-bottom">
-            <span class="kpi-cloud-text" id="admin-cloud-status">Cloud-Sync: Verbunden (bereit zum Speichern)</span>
+            <span class="kpi-cloud-text" id="admin-cloud-status">Cloud-Sync: Verbinde…</span>
           </div>
         </div>
       </div>
@@ -1479,7 +1490,7 @@
         </div>
       </div>
 
-      <!-- SUBPAGE: LAGERBESTAND (ADMIN VOLLZUGRIFF) -->
+      <!-- SUBPAGE: LAGERBESTAND -->
       <div id="sub-lager" class="admin-subpage">
         <div class="subpage-header">
           <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
@@ -1541,7 +1552,7 @@
                   <th>Produkt</th>
                   <th>Kategorie</th>
                   <th>Verkaufte Menge</th>
-                  <th>Brutto-Umsatz</th>
+                  <th>Umsatz</th>
                 </tr>
               </thead>
               <tbody id="stats-tbody" class="tabular"></tbody>
@@ -1550,17 +1561,17 @@
         </div>
       </div>
 
-      <!-- SUBPAGE: HAPPY HOUR -->
+      <!-- SUBPAGE: HAPPY HOUR (IN EURO €) -->
       <div id="sub-happyhour" class="admin-subpage">
         <div class="subpage-header">
           <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
-          <h2 style="font-size:18px;">⚡ Happy Hour Einstellungen</h2>
+          <h2 style="font-size:18px;">⚡ Happy Hour Einstellungen (Euro)</h2>
         </div>
 
         <div class="panel-card">
           <h2>Happy Hour Konfiguration</h2>
           <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
-            Du kannst die Happy Hour direkt oben auf der Admin-Übersicht per Schalter aktivieren oder hier den Rabattsatz und die Kategorie festlegen.
+            Wenn du die Happy Hour oben per Schalter aktivierst, wird der festgelegte <strong>Euro-Betrag</strong> automatisch pro passendem Artikel abgezogen. Kellner können zusätzlich einen weiteren Rabatt auswählen.
           </p>
           <form id="hh-form" class="form-grid">
             <div class="field">
@@ -1568,12 +1579,18 @@
               <input type="text" id="hh-label" value="Happy Hour" required />
             </div>
             <div class="field">
-              <label for="hh-percent">Rabatt (%)</label>
-              <input type="number" id="hh-percent" min="1" max="100" value="20" required />
+              <label for="hh-euro">Rabatt in Euro (€) pro Artikel</label>
+              <input type="number" id="hh-euro" step="0.05" min="0.05" value="1.00" required />
             </div>
             <div class="field">
               <label for="hh-cat">Gilt für Kategorie</label>
-              <input type="text" id="hh-cat" value="Alle" required />
+              <input type="text" id="hh-cat" list="hh-cat-list" value="Getränke" required />
+              <datalist id="hh-cat-list">
+                <option value="Alle"></option>
+                <option value="Getränke"></option>
+                <option value="Alkoholfrei"></option>
+                <option value="Essen & Snacks"></option>
+              </datalist>
             </div>
             <button type="submit" class="btn-primary-blue">Speichern</button>
           </form>
@@ -1584,7 +1601,7 @@
       <div id="sub-discounts" class="admin-subpage">
         <div class="subpage-header">
           <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
-          <h2 style="font-size:18px;">🏷️ Rabattknöpfe verwalten</h2>
+          <h2 style="font-size:18px;">🏷️ Zusätzliche Rabattknöpfe verwalten</h2>
         </div>
 
         <div class="panel-card">
@@ -1624,14 +1641,17 @@
         </div>
       </div>
 
-      <!-- SUBPAGE: BELEG & FIRMA -->
+      <!-- SUBPAGE: BELEG & FIRMA (KLEINUNTERNEHMEN) -->
       <div id="sub-company" class="admin-subpage">
         <div class="subpage-header">
           <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
-          <h2 style="font-size:18px;">🧾 Beleg &amp; Firma (§ 33 UStDV)</h2>
+          <h2 style="font-size:18px;">🧾 Beleg &amp; Firma (Kleinunternehmen)</h2>
         </div>
 
         <div class="panel-card">
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+            Auf dem Beleg wird aufgrund der Kleinunternehmerregelung keine Umsatzsteuer ausgewiesen.
+          </p>
           <form id="company-form" class="form-grid">
             <div class="field">
               <label for="comp-name">Name / Gesellschaft</label>
@@ -1646,22 +1666,8 @@
               <input type="text" id="comp-zip" required />
             </div>
             <div class="field">
-              <label for="comp-taxid">Steuernummer / USt-IdNr.</label>
+              <label for="comp-taxid">Steuernummer (optional)</label>
               <input type="text" id="comp-taxid" />
-            </div>
-            <div class="field">
-              <label for="comp-taxmode">Umsatzsteuer-Regelung</label>
-              <select id="comp-taxmode">
-                <option value="standard">Regelbesteuerung (inkl. MwSt.)</option>
-                <option value="kleinunternehmer">Kleinunternehmer (§ 19 UStG)</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="comp-taxrate">Steuersatz (%)</label>
-              <select id="comp-taxrate">
-                <option value="19">19 %</option>
-                <option value="7">7 %</option>
-              </select>
             </div>
             <div class="field" style="grid-column: 1 / -1;">
               <label for="comp-footer">Fußzeile auf dem Bon</label>
@@ -1717,7 +1723,7 @@
         </div>
       </div>
 
-      <!-- SUBPAGE: ROLLEN & RECHTE (EXTRA TAB IM ADMINBEREICH) -->
+      <!-- SUBPAGE: ROLLEN & RECHTE -->
       <div id="sub-roles" class="admin-subpage">
         <div class="subpage-header">
           <button type="button" class="btn-back-tiles" data-back-tiles>‹ Zurück zur Admin-Übersicht</button>
@@ -1736,7 +1742,7 @@
 
             <div class="perm-checks-grid">
               <label class="perm-item"><input type="checkbox" id="nr-canSell" checked /> Kasse bedienen (Verkaufen)</label>
-              <label class="perm-item"><input type="checkbox" id="nr-canDiscount" checked /> Rabatte auswählen</label>
+              <label class="perm-item"><input type="checkbox" id="nr-canDiscount" checked /> Zusätzliche Rabatte auswählen</label>
               <label class="perm-item"><input type="checkbox" id="nr-canLagerMinus" checked /> Manuelle Lagerentnahme (−)</label>
               <label class="perm-item"><input type="checkbox" id="nr-canLagerPlus" /> Lager-Nachschub (+) &amp; alle rückgängig</label>
               <label class="perm-item"><input type="checkbox" id="nr-canStorno" /> Belege stornieren</label>
@@ -1763,7 +1769,7 @@
         <div class="panel-card">
           <h2>Excel-Abrechnung &amp; Datensicherung</h2>
           <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:16px;">
-            Lädt das komplette Kassenbuch, die Verkaufsstatistik, den Lagerbestand und alle Lagerbewegungen als Excel-Datei (<code>.xlsx</code>) herunter.
+            Lädt das komplette Kassenbuch, die Verkaufsstatistik und den Lagerbestand als Excel-Datei (<code>.xlsx</code>) herunter.
           </p>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button type="button" class="btn-primary-blue" id="btn-export-xlsx">Excel-Datei (.xlsx) herunterladen</button>
@@ -1775,7 +1781,7 @@
   </main>
 
   <!-- =========================================================
-       MODAL 1: MANUELLE LAGERENTNAHME (FÜR KELLNER & ADMIN)
+       MODAL 1: MANUELLE LAGERENTNAHME
        ========================================================= -->
   <div class="modal-overlay" id="manual-lager-modal">
     <div class="modal-box" style="max-width:480px;">
@@ -1812,12 +1818,12 @@
   </div>
 
   <!-- =========================================================
-       MODAL 2: RABATT AUSWÄHLEN
+       MODAL 2: RABATT AUSWÄHLEN (OHNE HAPPY HOUR!)
        ========================================================= -->
   <div class="modal-overlay" id="discount-modal">
     <div class="modal-box" style="max-width:390px;">
       <div class="modal-head">
-        <h3>🏷️ Rabatt auswählen</h3>
+        <h3>🏷️ Zusätzlichen Rabatt wählen</h3>
         <button type="button" class="modal-close-x" data-close-modal="discount-modal">×</button>
       </div>
       <div id="discount-modal-options" style="display:flex; flex-direction:column; gap:8px;"></div>
@@ -1825,7 +1831,7 @@
   </div>
 
   <!-- =========================================================
-       MODAL 3: KLEINBETRAGSRECHNUNG (§ 33 UStDV) & QR-CODE
+       MODAL 3: KASSENBELEG (KLEINUNTERNEHMEN – OHNE STEUER) & QR-CODE
        ========================================================= -->
   <div class="modal-overlay" id="receipt-modal">
     <div class="modal-box" style="max-width:410px; text-align:center;">
@@ -1834,9 +1840,6 @@
         <button type="button" class="modal-close-x" data-close-modal="receipt-modal">×</button>
       </div>
 
-      <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">
-        Kleinbetragsrechnung gem. § 33 UStDV
-      </div>
       <div id="rec-comp-name" style="font-size:17px; font-weight:700; margin-top:2px;"></div>
       <div id="rec-comp-addr" style="font-size:12px; color:var(--text-muted);"></div>
       <div id="rec-meta" style="font-size:12px; color:var(--text-muted); margin-top:4px; font-weight:600;"></div>
@@ -1861,10 +1864,12 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
     import {
-      getFirestore,
+      initializeFirestore,
+      persistentLocalCache,
+      persistentMultipleTabManager,
+      memoryLocalCache,
       collection,
       doc,
-      getDoc,
       setDoc,
       updateDoc,
       deleteDoc,
@@ -1886,7 +1891,19 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+
+    let db;
+    try {
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      });
+    } catch (_) {
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        localCache: memoryLocalCache()
+      });
+    }
 
     const configDocRef = doc(db, "kasse_apple_v3", "konfiguration");
     const productsCol = collection(db, "kasse_apple_v3", "daten", "produkte");
@@ -1931,6 +1948,8 @@
     let discounts = [];
     let orders = [];
     let lagerLogs = [];
+    let initialSeedStarted = false;
+
     let settings = {
       initialized: false,
       kasseOpen: true,
@@ -1941,22 +1960,21 @@
         street: "Musterstraße 1",
         zipCity: "95686 Fichtelberg",
         taxId: "",
-        taxMode: "standard",
-        defaultTaxRate: 19,
+        taxMode: "kleinunternehmer",
         footerText: "Vielen Dank für Ihren Besuch!"
       },
       happyHour: {
         enabled: false,
         label: "Happy Hour",
-        discountPercent: 20,
-        categoryFilter: "Alle"
+        discountEuro: 1.0,
+        categoryFilter: "Getränke"
       }
     };
 
     let currentUser = null;
     let cart = {};
     let selectedMultiplier = 1;
-    let selectedDiscountChoice = "auto";
+    let selectedManualDiscountId = null; // null = kein zusätzlicher Rabatt; Happy Hour gilt immer automatisch!
 
     const esc = (s) =>
       String(s ?? "")
@@ -1967,6 +1985,15 @@
 
     const formatEUR = (val) =>
       Number(val || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+
+    function setCloudStatusUI(state, text) {
+      const el = document.getElementById("admin-cloud-status");
+      if (!el) return;
+      el.textContent = text;
+      if (state === "ok") el.style.color = "var(--green)";
+      else if (state === "warn") el.style.color = "var(--orange-dark)";
+      else el.style.color = "var(--red)";
+    }
 
     function updateDateTime() {
       const now = new Date();
@@ -2003,89 +2030,120 @@
       };
     }
 
-    // Erstbefüllung passend zu deinen Kategorien & Produkten
-    async function ensureInitialized() {
+    async function seedInitialData() {
+      if (initialSeedStarted) return;
+      initialSeedStarted = true;
       try {
-        const snap = await getDoc(configDocRef);
-        if (!snap.exists() || !snap.data().initialized) {
-          const batch = writeBatch(db);
-          batch.set(configDocRef, { ...settings, initialized: true }, { merge: true });
+        const batch = writeBatch(db);
+        batch.set(configDocRef, { ...settings, initialized: true }, { merge: true });
 
-          const starterProducts = [
-            { id: "init_longdrink", name: "Longdrink", price: 6.0, category: "Getränke", stockMode: "manual", stock: 100 },
-            { id: "init_shot", name: "Shot", price: 2.0, category: "Getränke", stockMode: "manual", stock: 120 },
-            { id: "init_cocktail", name: "Cocktail", price: 7.0, category: "Getränke", stockMode: "manual", stock: 80 },
-            { id: "init_cola", name: "Cola / Fanta", price: 2.5, category: "Alkoholfrei", stockMode: "manual", stock: 150 },
-            { id: "init_wasser", name: "Wasser", price: 2.0, category: "Alkoholfrei", stockMode: "manual", stock: 150 },
-            { id: "init_alkfrei", name: "Alkoholfreies", price: 3.0, category: "Alkoholfrei", stockMode: "manual", stock: 80 },
-            { id: "init_snack", name: "Snack / Chips", price: 1.5, category: "Essen & Snacks", stockMode: "auto", stock: 100 }
-          ];
-          starterProducts.forEach((p) => {
-            const { id, ...rest } = p;
-            batch.set(doc(productsCol, id), rest);
-          });
+        const starterProducts = [
+          { id: "init_longdrink", name: "Longdrink", price: 6.0, category: "Getränke", stockMode: "manual", stock: 100 },
+          { id: "init_shot", name: "Shot", price: 2.0, category: "Getränke", stockMode: "manual", stock: 120 },
+          { id: "init_cocktail", name: "Cocktail", price: 7.0, category: "Getränke", stockMode: "manual", stock: 80 },
+          { id: "init_cola", name: "Cola / Fanta", price: 2.5, category: "Alkoholfrei", stockMode: "manual", stock: 150 },
+          { id: "init_wasser", name: "Wasser", price: 2.0, category: "Alkoholfrei", stockMode: "manual", stock: 150 },
+          { id: "init_alkfrei", name: "Alkoholfreies", price: 3.0, category: "Alkoholfrei", stockMode: "manual", stock: 80 },
+          { id: "init_snack", name: "Snack / Chips", price: 1.5, category: "Essen & Snacks", stockMode: "auto", stock: 100 }
+        ];
+        starterProducts.forEach((p) => {
+          const { id, ...rest } = p;
+          batch.set(doc(productsCol, id), rest, { merge: true });
+        });
 
-          batch.set(doc(discountsCol, "init_helfer"), { name: "Helfer-Rabatt (50 %)", type: "percent", value: 50 });
-          await batch.commit();
-        }
+        batch.set(doc(discountsCol, "init_helfer"), { name: "Helfer-Rabatt (50 %)", type: "percent", value: 50 }, { merge: true });
+        await batch.commit();
       } catch (err) {
-        document.getElementById("admin-cloud-status").textContent = `Cloud-Fehler: ${err.message}`;
-        document.getElementById("admin-cloud-status").style.color = "var(--red)";
+        console.warn("Initialisierung wird bei Verbindung wiederholt:", err);
+        initialSeedStarted = false;
       }
     }
-    ensureInitialized();
 
     // =========================================================
     // CLOUD FIRESTORE LISTENERS
     // =========================================================
-    onSnapshot(configDocRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        settings = {
-          ...settings,
-          ...data,
-          roles: Array.isArray(data.roles) && data.roles.length > 0 ? data.roles : DEFAULT_ROLES,
-          accounts: Array.isArray(data.accounts) && data.accounts.length > 0 ? data.accounts : DEFAULT_ACCOUNTS,
-          company: { ...settings.company, ...(data.company || {}) },
-          happyHour: { ...settings.happyHour, ...(data.happyHour || {}) }
-        };
-        applyPermissionsAndStatusUI();
-        renderRolesEditor();
-        renderAccountsTable();
+    onSnapshot(
+      configDocRef,
+      { includeMetadataChanges: true },
+      (snap) => {
+        if (!snap.metadata.fromCache) {
+          setCloudStatusUI("ok", "Cloud-Sync: Verbunden (Live)");
+        } else {
+          setCloudStatusUI("warn", "Cloud-Sync: Lokaler Cache aktiv (synchronisiert…)");
+        }
+
+        if (snap.exists()) {
+          const data = snap.data();
+          const mergedHH = { ...settings.happyHour, ...(data.happyHour || {}) };
+          if (mergedHH.discountEuro == null) mergedHH.discountEuro = 1.0;
+
+          settings = {
+            ...settings,
+            ...data,
+            roles: Array.isArray(data.roles) && data.roles.length > 0 ? data.roles : DEFAULT_ROLES,
+            accounts: Array.isArray(data.accounts) && data.accounts.length > 0 ? data.accounts : DEFAULT_ACCOUNTS,
+            company: { ...settings.company, ...(data.company || {}) },
+            happyHour: mergedHH
+          };
+          applyPermissionsAndStatusUI();
+          renderRolesEditor();
+          renderAccountsTable();
+          renderCategoriesAndProducts();
+          renderCart();
+        } else if (!snap.metadata.fromCache) {
+          seedInitialData();
+        }
+      },
+      (err) => {
+        setCloudStatusUI("err", `Cloud-Hinweis: ${err.message}`);
+      }
+    );
+
+    onSnapshot(
+      productsCol,
+      (snap) => {
+        products = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.name || "").localeCompare(b.name || ""));
         renderCategoriesAndProducts();
         renderCart();
-      }
-    });
+        renderAdminProducts();
+        renderAdminLager();
+        renderManualLagerDropdown();
+      },
+      (err) => console.warn("Produkte Listener:", err.message)
+    );
 
-    onSnapshot(productsCol, (snap) => {
-      products = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.name || "").localeCompare(b.name || ""));
-      renderCategoriesAndProducts();
-      renderCart();
-      renderAdminProducts();
-      renderAdminLager();
-      renderManualLagerDropdown();
-    });
+    onSnapshot(
+      discountsCol,
+      (snap) => {
+        discounts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        renderAdminDiscounts();
+        renderCart();
+      },
+      (err) => console.warn("Rabatte Listener:", err.message)
+    );
 
-    onSnapshot(discountsCol, (snap) => {
-      discounts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      renderAdminDiscounts();
-      renderCart();
-    });
+    onSnapshot(
+      query(ordersCol, orderBy("timestampMs", "desc")),
+      (snap) => {
+        orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const lastBtn = document.getElementById("btn-last-receipt");
+        lastBtn.classList.toggle("has-order", orders.length > 0);
+        renderJournalAndStats();
+      },
+      (err) => console.warn("Buchungen Listener:", err.message)
+    );
 
-    onSnapshot(query(ordersCol, orderBy("timestampMs", "desc")), (snap) => {
-      orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const lastBtn = document.getElementById("btn-last-receipt");
-      lastBtn.classList.toggle("has-order", orders.length > 0);
-      renderJournalAndStats();
-    });
-
-    onSnapshot(query(lagerLogsCol, orderBy("timestampMs", "desc"), limit(60)), (snap) => {
-      lagerLogs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      renderAdminLagerLogs();
-      renderManualLagerHistory();
-    });
+    onSnapshot(
+      query(lagerLogsCol, orderBy("timestampMs", "desc"), limit(60)),
+      (snap) => {
+        lagerLogs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        renderAdminLagerLogs();
+        renderManualLagerHistory();
+      },
+      (err) => console.warn("LagerLogs Listener:", err.message)
+    );
 
     // =========================================================
     // LOGIN & SESSION
@@ -2128,6 +2186,7 @@
     document.getElementById("btn-logout").addEventListener("click", () => {
       currentUser = null;
       cart = {};
+      selectedManualDiscountId = null;
       sessionStorage.removeItem("abi_kasse_user");
       document.getElementById("login-screen").classList.remove("hidden");
     });
@@ -2163,23 +2222,20 @@
       const labelName = acc.displayName ? `${acc.displayName} (${acc.id}(${role.name}))` : `${acc.id} (${role.name})`;
       document.getElementById("top-user-label").textContent = labelName;
 
-      // Admin-Tab nur anzeigen, wenn Rolle Adminrechte hat
       document.getElementById("nav-admin-btn").style.display = perms.canAdmin ? "inline-block" : "none";
       if (!perms.canAdmin && document.getElementById("view-admin").classList.contains("active")) {
         switchTopTab("kasse");
       }
 
-      // Manuelle Lagerentnahme Button
       document.getElementById("btn-open-manual-lager").style.display =
         perms.canLagerMinus || perms.canLagerPlus ? "inline-flex" : "none";
 
-      // Rabatt Button
       document.getElementById("btn-open-discount").disabled = !perms.canDiscount;
 
-      // Happy Hour Status
       const hhOn = !!settings.happyHour?.enabled;
+      const hhEuro = Number(settings.happyHour?.discountEuro ?? 1.0);
       const hhPill = document.getElementById("top-hh-pill");
-      hhPill.textContent = hhOn ? `Happy Hour: Aktiv (-${settings.happyHour.discountPercent}%)` : "Happy Hour: Inaktiv";
+      hhPill.textContent = hhOn ? `Happy Hour: Aktiv (-${formatEUR(hhEuro)})` : "Happy Hour: Inaktiv";
       hhPill.classList.toggle("active", hhOn);
 
       const adminHhText = document.getElementById("admin-hh-state-text");
@@ -2187,7 +2243,6 @@
       adminHhText.className = hhOn ? "kpi-state-green" : "kpi-state-red";
       document.getElementById("admin-hh-switch").checked = hhOn;
 
-      // Kassenbetrieb Status
       const kasseOpen = settings.kasseOpen !== false;
       const adminKasseText = document.getElementById("admin-kasse-state-text");
       adminKasseText.textContent = kasseOpen ? "Aktiv" : "Gesperrt";
@@ -2198,30 +2253,27 @@
       document.getElementById("kasse-locked-banner").classList.toggle("active", showLock);
       document.getElementById("pos-main-grid").style.display = showLock ? "none" : "grid";
 
-      // Formularfelder synchronisieren
       if (!document.activeElement?.closest("#company-form")) {
         const c = settings.company;
         document.getElementById("comp-name").value = c.name || "";
         document.getElementById("comp-street").value = c.street || "";
         document.getElementById("comp-zip").value = c.zipCity || "";
         document.getElementById("comp-taxid").value = c.taxId || "";
-        document.getElementById("comp-taxmode").value = c.taxMode || "standard";
-        document.getElementById("comp-taxrate").value = String(c.defaultTaxRate || 19);
         document.getElementById("comp-footer").value = c.footerText || "";
       }
 
       if (!document.activeElement?.closest("#hh-form")) {
         const hh = settings.happyHour;
         document.getElementById("hh-label").value = hh.label || "Happy Hour";
-        document.getElementById("hh-percent").value = hh.discountPercent || 20;
-        document.getElementById("hh-cat").value = hh.categoryFilter || "Alle";
+        document.getElementById("hh-euro").value = Number(hh.discountEuro ?? 1.0).toFixed(2);
+        document.getElementById("hh-cat").value = hh.categoryFilter || "Getränke";
       }
     }
 
     restoreSession();
 
     // =========================================================
-    // MULTIPLIKATOR & PRODUKTKARTEN (EXAKT WIE SCREENSHOT 1)
+    // MULTIPLIKATOR & PRODUKTKARTEN
     // =========================================================
     function setMultiplier(val) {
       selectedMultiplier = val;
@@ -2306,31 +2358,33 @@
     }
 
     // =========================================================
-    // WARENKORB, RABATT-MODAL & RÜCKGELDRECHNER
+    // WARENKORB, AUTOMATISCHE HAPPY HOUR (€) + ZUSÄTZLICHER RABATT
     // =========================================================
     document.getElementById("toggle-change-calc").addEventListener("change", (e) => {
       document.getElementById("change-calc-box").classList.toggle("open", e.target.checked);
     });
 
+    // Im Rabatt-Modal gibt es NUR zusätzliche Rabattknöpfe (KEINE Happy Hour!)
     document.getElementById("btn-open-discount").addEventListener("click", () => {
       if (!getCurrentPermissions().canDiscount) return;
       const box = document.getElementById("discount-modal-options");
+
       const presetBtns = discounts
         .map((d) => {
           const lbl = d.type === "percent" ? `${d.name} (-${d.value}%)` : `${d.name} (-${formatEUR(d.value)})`;
-          return `<button type="button" class="btn-outline" style="text-align:left;" data-pick-disc="${esc(d.id)}">${esc(lbl)}</button>`;
+          const isSel = selectedManualDiscountId === d.id;
+          return `<button type="button" class="btn-outline" style="text-align:left; ${isSel ? "border-color:var(--purple-dark); background:#FAF5FF;" : ""}" data-pick-disc="${esc(d.id)}">${esc(lbl)}</button>`;
         })
         .join("");
 
       box.innerHTML = `
-        <button type="button" class="btn-outline" style="text-align:left;" data-pick-disc="auto">Automatisch (Happy Hour falls aktiv)</button>
-        <button type="button" class="btn-outline" style="text-align:left;" data-pick-disc="none">Kein Rabatt</button>
-        ${presetBtns}
+        <button type="button" class="btn-outline" style="text-align:left;" data-pick-disc="none">Kein zusätzlicher Rabatt</button>
+        ${presetBtns || `<p style="font-size:13px; color:var(--text-muted); padding:6px 0;">Noch keine Rabattknöpfe im Adminbereich angelegt.</p>`}
       `;
 
       box.querySelectorAll("[data-pick-disc]").forEach((b) => {
         b.addEventListener("click", () => {
-          selectedDiscountChoice = b.dataset.pickDisc;
+          selectedManualDiscountId = b.dataset.pickDisc === "none" ? null : b.dataset.pickDisc;
           document.getElementById("discount-modal").classList.remove("open");
           renderCart();
         });
@@ -2345,40 +2399,62 @@
         .map(([id, qty]) => ({ product: products.find((p) => p.id === id), qty }));
 
       const subtotal = entries.reduce((sum, e) => sum + e.product.price * e.qty, 0);
-      const posSum = entries.reduce((sum, e) => sum + (e.product.price > 0 ? e.product.price * e.qty : 0), 0);
 
-      let discountAmount = 0;
-      let discountName = null;
+      // 1. Happy Hour automatisch berechnen (in Euro pro passendem Artikel)
+      let happyHourAmount = 0;
+      let happyHourLabel = null;
       let happyHourApplied = false;
 
-      if (selectedDiscountChoice === "auto") {
-        if (settings.happyHour?.enabled && posSum > 0) {
-          const hh = settings.happyHour;
-          const hhCat = (hh.categoryFilter || "Alle").toLowerCase();
-          const eligible = entries.reduce((s, e) => {
-            if (e.product.price <= 0) return s;
-            if (hhCat === "alle" || (e.product.category || "").toLowerCase() === hhCat) return s + e.product.price * e.qty;
-            return s;
-          }, 0);
-          if (eligible > 0) {
-            discountAmount = Math.round(eligible * (Number(hh.discountPercent) / 100) * 100) / 100;
-            discountName = `${hh.label} (-${hh.discountPercent}%)`;
+      if (settings.happyHour?.enabled && entries.length > 0) {
+        const hh = settings.happyHour;
+        const hhEuroPerItem = Math.max(0, Number(hh.discountEuro ?? 1.0));
+        const hhCat = (hh.categoryFilter || "Alle").trim().toLowerCase();
+
+        if (hhEuroPerItem > 0) {
+          entries.forEach(({ product: p, qty }) => {
+            if (p.price <= 0) return;
+            const matchesCat = hhCat === "alle" || (p.category || "").trim().toLowerCase() === hhCat;
+            if (matchesCat) {
+              const perUnitDeduction = Math.min(p.price, hhEuroPerItem);
+              happyHourAmount += perUnitDeduction * qty;
+            }
+          });
+          happyHourAmount = Math.round(happyHourAmount * 100) / 100;
+          if (happyHourAmount > 0) {
             happyHourApplied = true;
+            happyHourLabel = `${hh.label || "Happy Hour"} (-${formatEUR(hhEuroPerItem)}/Stk.)`;
           }
-        }
-      } else if (selectedDiscountChoice !== "none") {
-        const tmpl = discounts.find((d) => d.id === selectedDiscountChoice);
-        if (tmpl && posSum > 0) {
-          discountAmount =
-            tmpl.type === "percent"
-              ? Math.round(posSum * (Number(tmpl.value) / 100) * 100) / 100
-              : Math.min(posSum, Number(tmpl.value));
-          discountName = tmpl.name;
         }
       }
 
-      const total = Math.round((subtotal - discountAmount) * 100) / 100;
-      return { entries, subtotal, discountAmount, discountName, happyHourApplied, total };
+      // 2. Zusätzlichen Rabatt auf den verbleibenden Betrag anwenden
+      const remainingAfterHH = Math.max(0, Math.round((subtotal - happyHourAmount) * 100) / 100);
+      let manualDiscountAmount = 0;
+      let manualDiscountName = null;
+
+      if (selectedManualDiscountId && remainingAfterHH > 0) {
+        const tmpl = discounts.find((d) => d.id === selectedManualDiscountId);
+        if (tmpl) {
+          manualDiscountAmount =
+            tmpl.type === "percent"
+              ? Math.round(remainingAfterHH * (Number(tmpl.value) / 100) * 100) / 100
+              : Math.min(remainingAfterHH, Number(tmpl.value));
+          manualDiscountName = tmpl.name;
+        }
+      }
+
+      const total = Math.max(0, Math.round((subtotal - happyHourAmount - manualDiscountAmount) * 100) / 100);
+
+      return {
+        entries,
+        subtotal,
+        happyHourAmount,
+        happyHourLabel,
+        happyHourApplied,
+        manualDiscountAmount,
+        manualDiscountName,
+        total
+      };
     }
 
     function updateChangeCalc(total) {
@@ -2396,21 +2472,36 @@
     }
 
     function renderCart() {
-      const { entries, discountAmount, discountName, total } = calculateTotals();
+      const {
+        entries,
+        happyHourAmount,
+        happyHourLabel,
+        manualDiscountAmount,
+        manualDiscountName,
+        total
+      } = calculateTotals();
+
       const listEl = document.getElementById("order-list");
       const payBtn = document.getElementById("btn-pay-book");
 
       payBtn.disabled = entries.length === 0;
       payBtn.classList.toggle("ready", entries.length > 0);
 
+      // Happy Hour Zeile (automatisch)
+      const hhRow = document.getElementById("hh-applied-row");
+      hhRow.style.display = happyHourAmount > 0 ? "flex" : "none";
+      document.getElementById("hh-applied-name").textContent = `⚡ ${happyHourLabel || "Happy Hour"}`;
+      document.getElementById("hh-applied-val").textContent = `-${formatEUR(happyHourAmount)}`;
+
+      // Zusätzlicher Rabatt Zeile
       const discRow = document.getElementById("discount-applied-row");
-      discRow.style.display = discountAmount > 0 ? "flex" : "none";
-      document.getElementById("discount-applied-name").textContent = discountName || "Rabatt";
-      document.getElementById("discount-applied-val").textContent = `-${formatEUR(discountAmount)}`;
+      discRow.style.display = manualDiscountAmount > 0 ? "flex" : "none";
+      document.getElementById("discount-applied-name").textContent = `🏷️ ${manualDiscountName || "Rabatt"}`;
+      document.getElementById("discount-applied-val").textContent = `-${formatEUR(manualDiscountAmount)}`;
 
       document.getElementById("btn-discount-text").textContent =
-        selectedDiscountChoice !== "auto" && selectedDiscountChoice !== "none" && discountName
-          ? `Rabatt: ${discountName}`
+        selectedManualDiscountId && manualDiscountName
+          ? `Rabatt: ${manualDiscountName}`
           : "Rabatt auswählen";
 
       document.getElementById("order-total-display").textContent = formatEUR(total);
@@ -2472,13 +2563,16 @@
       });
     });
 
-    document.getElementById("btn-clear-order").addEventListener("click", () => {
+    function clearCurrentCart() {
       cart = {};
-      selectedDiscountChoice = "auto";
+      selectedManualDiscountId = null;
+      setMultiplier(1);
       document.getElementById("tender-input").value = "";
       renderCategoriesAndProducts();
       renderCart();
-    });
+    }
+
+    document.getElementById("btn-clear-order").addEventListener("click", clearCurrentCart);
 
     document.getElementById("btn-last-receipt").addEventListener("click", () => {
       if (orders.length === 0) {
@@ -2489,18 +2583,25 @@
     });
 
     // =========================================================
-    // BEZAHLEN & BUCHEN (FIRESTORE)
+    // BEZAHLEN & BUCHEN -> WARENKORB SOFORT AUTOMATISCH LÖSCHEN
     // =========================================================
     document.getElementById("btn-pay-book").addEventListener("click", async () => {
       if (!currentUser) return;
       const perms = getCurrentPermissions();
       if (!perms.canSell || (!perms.canAdmin && settings.kasseOpen === false)) return;
 
-      const { entries, subtotal, discountAmount, discountName, happyHourApplied, total } = calculateTotals();
-      if (entries.length === 0) return;
+      const {
+        entries,
+        subtotal,
+        happyHourAmount,
+        happyHourLabel,
+        happyHourApplied,
+        manualDiscountAmount,
+        manualDiscountName,
+        total
+      } = calculateTotals();
 
-      const btn = document.getElementById("btn-pay-book");
-      btn.disabled = true;
+      if (entries.length === 0) return;
 
       const now = new Date();
       const maxNum = orders.reduce((m, o) => {
@@ -2510,11 +2611,6 @@
       const bonNr = `BON-${String(maxNum + 1).padStart(4, "0")}`;
 
       const comp = settings.company;
-      const isKU = comp.taxMode === "kleinunternehmer";
-      const taxRate = isKU ? 0 : Number(comp.defaultTaxRate || 19);
-      const netTotal = isKU ? total : Math.round((total / (1 + taxRate / 100)) * 100) / 100;
-      const taxTotal = Math.round((total - netTotal) * 100) / 100;
-
       const tenderVal = parseFloat(document.getElementById("tender-input").value);
       const given = !isNaN(tenderVal) && document.getElementById("tender-input").value !== "" ? tenderVal : total;
       const change = Math.round((given - total) * 100) / 100;
@@ -2534,19 +2630,22 @@
           stockMode: p.stockMode || "auto"
         })),
         subtotal,
-        discountName,
-        discountAmount,
         happyHourApplied,
+        happyHourLabel,
+        happyHourAmount,
+        manualDiscountName,
+        manualDiscountAmount,
         total,
-        netTotal,
-        taxTotal,
-        taxRate,
-        isKleinunternehmer: isKU,
+        isKleinunternehmer: true,
         companySnapshot: { ...comp },
         given,
         change,
         storniert: false
       };
+
+      // Warenkorb sofort nach dem Kassieren automatisch löschen
+      clearCurrentCart();
+      openReceiptModal(orderData);
 
       try {
         const batch = writeBatch(db);
@@ -2557,19 +2656,12 @@
           }
         });
         await batch.commit();
-
-        cart = {};
-        selectedDiscountChoice = "auto";
-        document.getElementById("tender-input").value = "";
-        renderCategoriesAndProducts();
-        renderCart();
-        openReceiptModal(orderData);
       } catch (err) {
-        alert("Fehler beim Speichern: " + err.message);
-        btn.disabled = false;
+        alert("Hinweis bei Cloud-Synchronisation: " + err.message);
       }
     });
 
+    // Kassenbeleg OHNE Steuer-Ausweis (Kleinunternehmen)
     function openReceiptModal(order) {
       const comp = order.companySnapshot || settings.company;
       document.getElementById("rec-comp-name").textContent = comp.name || "Abi-Kassensystem";
@@ -2589,34 +2681,34 @@
         )
         .join("");
 
-      const discHtml =
-        order.discountAmount > 0
-          ? `<div class="receipt-row" style="color:var(--purple-dark);">
-               <span>Rabatt (${esc(order.discountName || "")})</span>
-               <span>-${formatEUR(order.discountAmount)}</span>
+      const hhAmt = Number(order.happyHourAmount || 0);
+      const hhHtml =
+        hhAmt > 0
+          ? `<div class="receipt-row" style="color:var(--green-dark);">
+               <span>${esc(order.happyHourLabel || "Happy Hour")}</span>
+               <span>-${formatEUR(hhAmt)}</span>
              </div>`
           : "";
 
-      const taxHtml = order.isKleinunternehmer
-        ? `<div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.</div>`
-        : `<div class="receipt-row" style="font-size:12px; color:var(--text-muted);">
-             <span>Darin enthaltene USt. (${order.taxRate}%)</span>
-             <span>${formatEUR(order.taxTotal)}</span>
-           </div>
-           <div class="receipt-row" style="font-size:12px; color:var(--text-muted);">
-             <span>Nettobetrag</span>
-             <span>${formatEUR(order.netTotal)}</span>
-           </div>`;
+      const manAmt = Number(order.manualDiscountAmount ?? order.discountAmount ?? 0);
+      const manName = order.manualDiscountName ?? order.discountName ?? "Rabatt";
+      const discHtml =
+        manAmt > 0
+          ? `<div class="receipt-row" style="color:var(--purple-dark);">
+               <span>Rabatt (${esc(manName)})</span>
+               <span>-${formatEUR(manAmt)}</span>
+             </div>`
+          : "";
 
       document.getElementById("rec-body").innerHTML = `
         ${itemsHtml}
+        ${hhHtml}
         ${discHtml}
         <div class="receipt-sep"></div>
         <div class="receipt-row" style="font-weight:700; font-size:15px;">
-          <span>Gesamt (Brutto)</span>
+          <span>Gesamt</span>
           <span>${formatEUR(order.total)}</span>
         </div>
-        ${taxHtml}
         <div class="receipt-sep"></div>
         <div class="receipt-row" style="font-size:12px; color:var(--text-muted);">
           <span>Gegeben / Rückgeld</span>
@@ -2701,7 +2793,6 @@
         return;
       }
 
-      // Öfter rückgängig möglich, aber IMMER nur die allerletzte Entnahme (Index 0, sofern noch nicht rückgängig)
       box.innerHTML = myDeductions
         .slice(0, 12)
         .map((log, idx) => {
@@ -2739,7 +2830,6 @@
       });
     }
 
-    // Modal schließen
     document.querySelectorAll("[data-close-modal]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.getElementById(btn.dataset.closeModal).classList.remove("open");
@@ -2847,7 +2937,7 @@
     }
 
     // =========================================================
-    // ADMIN: LAGERBESTAND (VOLLZUGRIFF)
+    // ADMIN: LAGERBESTAND
     // =========================================================
     function renderAdminLager() {
       const tracked = products.filter((p) => (p.stockMode || "auto") !== "unlimited");
@@ -2929,7 +3019,7 @@
     }
 
     // =========================================================
-    // ADMIN: ROLLEN & RECHTE (EXTRA TAB)
+    // ADMIN: ROLLEN & RECHTE
     // =========================================================
     document.getElementById("add-role-form").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -2989,7 +3079,7 @@
 
               <div class="perm-checks-grid" style="margin-bottom:0;">
                 <label class="perm-item"><input type="checkbox" id="re-${idx}-canSell" ${isAdmin || p.canSell ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Kasse bedienen</label>
-                <label class="perm-item"><input type="checkbox" id="re-${idx}-canDiscount" ${isAdmin || p.canDiscount ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Rabatte auswählen</label>
+                <label class="perm-item"><input type="checkbox" id="re-${idx}-canDiscount" ${isAdmin || p.canDiscount ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Zusätzliche Rabatte auswählen</label>
                 <label class="perm-item"><input type="checkbox" id="re-${idx}-canLagerMinus" ${isAdmin || p.canLagerMinus ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Manuelle Lagerentnahme (−)</label>
                 <label class="perm-item"><input type="checkbox" id="re-${idx}-canLagerPlus" ${isAdmin || p.canLagerPlus ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Lager-Nachschub (+)</label>
                 <label class="perm-item"><input type="checkbox" id="re-${idx}-canStorno" ${isAdmin || p.canStorno ? "checked" : ""} ${isAdmin ? "disabled" : ""} /> Belege stornieren</label>
@@ -3133,7 +3223,7 @@
     }
 
     // =========================================================
-    // ADMIN: HAPPY HOUR, RABATTE, FIRMA, KASSENBUCH & EXCEL
+    // ADMIN: HAPPY HOUR (€), RABATTE, FIRMA, KASSENBUCH & EXCEL
     // =========================================================
     document.getElementById("hh-form").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -3143,7 +3233,7 @@
           happyHour: {
             ...settings.happyHour,
             label: document.getElementById("hh-label").value.trim() || "Happy Hour",
-            discountPercent: parseFloat(document.getElementById("hh-percent").value) || 20,
+            discountEuro: parseFloat(document.getElementById("hh-euro").value) || 1.0,
             categoryFilter: document.getElementById("hh-cat").value.trim() || "Alle"
           }
         },
@@ -3190,8 +3280,7 @@
             street: document.getElementById("comp-street").value.trim(),
             zipCity: document.getElementById("comp-zip").value.trim(),
             taxId: document.getElementById("comp-taxid").value.trim(),
-            taxMode: document.getElementById("comp-taxmode").value,
-            defaultTaxRate: parseInt(document.getElementById("comp-taxrate").value, 10),
+            taxMode: "kleinunternehmer",
             footerText: document.getElementById("comp-footer").value.trim()
           }
         },
@@ -3202,9 +3291,9 @@
 
     function renderJournalAndStats() {
       const valid = orders.filter((o) => !o.storniert);
-      const brutto = valid.reduce((s, o) => s + Number(o.total || 0), 0);
+      const umsatz = valid.reduce((s, o) => s + Number(o.total || 0), 0);
       document.getElementById("admin-live-revenue").textContent =
-        brutto.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(",", ".") + " €";
+        umsatz.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(",", ".") + " €";
 
       document.getElementById("journal-tbody").innerHTML =
         orders.length === 0
@@ -3288,9 +3377,9 @@
             Uhrzeit: o.timeStr,
             Bediener: o.cashierId || "",
             Positionen: (o.items || []).map((i) => `${i.qty}x ${i.name}`).join("; "),
-            "Netto (€)": Number(o.netTotal ?? o.total ?? 0),
-            "USt. (€)": Number(o.taxTotal || 0),
-            "Brutto (€)": Number(o.total || 0),
+            "Happy Hour (€)": Number(o.happyHourAmount || 0),
+            "Rabatt (€)": Number(o.manualDiscountAmount ?? o.discountAmount ?? 0),
+            "Gesamt (€)": Number(o.total || 0),
             Status: o.storniert ? "Storniert" : "Bezahlt"
           }))
         ),
