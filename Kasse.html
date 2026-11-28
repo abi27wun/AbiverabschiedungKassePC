@@ -1882,12 +1882,12 @@
     } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyBe-Mn1CMIVBNXl-XRjVkS_1LH6yN7JRF4",
-      authDomain: "abi27wun.firebaseapp.com",
-      projectId: "abi27wun",
-      storageBucket: "abi27wun.firebasestorage.app",
-      messagingSenderId: "1060588154453",
-      appId: "1:1060588154453:web:80025063f74e274c9feedc"
+      apiKey: "AIzaSyCQasnJMHcMfdOVN9jyBCoVLQz5MSnng4",
+      authDomain: "abi27wun-4b4cf.firebaseapp.com",
+      projectId: "abi27wun-4b4cf",
+      storageBucket: "abi27wun-4b4cf.firebasestorage.app",
+      messagingSenderId: "177210925726",
+      appId: "1:177210925726:web:a58ceb98155f35d18c118f"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -1974,7 +1974,7 @@
     let currentUser = null;
     let cart = {};
     let selectedMultiplier = 1;
-    let selectedManualDiscountId = null; // null = kein zusätzlicher Rabatt; Happy Hour gilt immer automatisch!
+    let selectedManualDiscountId = null;
 
     const esc = (s) =>
       String(s ?? "")
@@ -2364,7 +2364,6 @@
       document.getElementById("change-calc-box").classList.toggle("open", e.target.checked);
     });
 
-    // Im Rabatt-Modal gibt es NUR zusätzliche Rabattknöpfe (KEINE Happy Hour!)
     document.getElementById("btn-open-discount").addEventListener("click", () => {
       if (!getCurrentPermissions().canDiscount) return;
       const box = document.getElementById("discount-modal-options");
@@ -2400,7 +2399,6 @@
 
       const subtotal = entries.reduce((sum, e) => sum + e.product.price * e.qty, 0);
 
-      // 1. Happy Hour automatisch berechnen (in Euro pro passendem Artikel)
       let happyHourAmount = 0;
       let happyHourLabel = null;
       let happyHourApplied = false;
@@ -2427,7 +2425,6 @@
         }
       }
 
-      // 2. Zusätzlichen Rabatt auf den verbleibenden Betrag anwenden
       const remainingAfterHH = Math.max(0, Math.round((subtotal - happyHourAmount) * 100) / 100);
       let manualDiscountAmount = 0;
       let manualDiscountName = null;
@@ -2487,13 +2484,11 @@
       payBtn.disabled = entries.length === 0;
       payBtn.classList.toggle("ready", entries.length > 0);
 
-      // Happy Hour Zeile (automatisch)
       const hhRow = document.getElementById("hh-applied-row");
       hhRow.style.display = happyHourAmount > 0 ? "flex" : "none";
       document.getElementById("hh-applied-name").textContent = `⚡ ${happyHourLabel || "Happy Hour"}`;
       document.getElementById("hh-applied-val").textContent = `-${formatEUR(happyHourAmount)}`;
 
-      // Zusätzlicher Rabatt Zeile
       const discRow = document.getElementById("discount-applied-row");
       discRow.style.display = manualDiscountAmount > 0 ? "flex" : "none";
       document.getElementById("discount-applied-name").textContent = `🏷️ ${manualDiscountName || "Rabatt"}`;
@@ -2643,7 +2638,6 @@
         storniert: false
       };
 
-      // Warenkorb sofort nach dem Kassieren automatisch löschen
       clearCurrentCart();
       openReceiptModal(orderData);
 
@@ -2661,7 +2655,6 @@
       }
     });
 
-    // Kassenbeleg OHNE Steuer-Ausweis (Kleinunternehmen)
     function openReceiptModal(order) {
       const comp = order.companySnapshot || settings.company;
       document.getElementById("rec-comp-name").textContent = comp.name || "Abi-Kassensystem";
